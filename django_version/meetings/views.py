@@ -2,6 +2,7 @@ import secrets
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import F
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -51,8 +52,13 @@ def list_view(request):
     qs = access.visible_meetings(request.user).select_related('org_unit', 'organiser')
     now = timezone.now()
     return render(request, 'meetings/list.html', _ctx(
-        request, upcoming=qs.filter(ends_at__gte=now).exclude(status='cancelled').order_by('starts_at')[:50],
+        request, upcoming=qs.filter(Q_upcoming(now)).exclude(status__in=('cancelled', 'completed')).order_by(F('starts_at').asc(nulls_last=True), '-created_at')[:50],
         past=qs.filter(Q_past(now))[:50], can_create=_managed_units(request.user).exists()))
+
+
+def Q_upcoming(now):
+    from django.db.models import Q
+    return Q(ends_at__gte=now) | Q(ends_at__isnull=True)
 
 
 def Q_past(now):
@@ -67,11 +73,7 @@ def create_view(request):
     units = _managed_units(request.user)
     if not units.exists():
         raise Http404
-    now = timezone.localtime().replace(minute=0, second=0, microsecond=0) + timezone.timedelta(hours=1)
-    default_end = now + timezone.timedelta(hours=1)
     initial = {
-        'starts_at': now.strftime('%Y-%m-%dT%H:%M'),
-        'ends_at': default_end.strftime('%Y-%m-%dT%H:%M'),
         'mode': 'virtual',
         'platform': 'woddi',
         'audience': 'unit',
@@ -125,8 +127,8 @@ def detail_view(request, pk):
         minutes_text=(draft_minutes(m, m.transcript.all(), [c.profile.full_name for c in m.checkins.select_related('profile')])
                       if mgr and request.GET.get('draft') else m.minutes),
         has_transcript=m.transcript.exists(), usage=getattr(m, 'translation_usage', None),
-        time_elapsed=m.status in ('scheduled', 'in_progress') and now > m.ends_at + timezone.timedelta(minutes=30),
-        live=m.status in ('scheduled', 'in_progress') and m.starts_at - timezone.timedelta(minutes=15) <= now <= m.ends_at))
+        time_elapsed=bool(m.ends_at) and m.status in ('scheduled', 'in_progress') and now > m.ends_at + timezone.timedelta(minutes=30),
+        live=_room_open(m)))
 
 
 @login_required
@@ -159,6 +161,8 @@ def join_view(request, pk):
 
 
 def _fmt_12h(dt):
+    if not dt:
+        return ''
     """Format a timezone-aware datetime as a clear 12-hour clock string (e.g. 'Thu 29 Oct 2026, 7:00 PM')."""
     loc = timezone.localtime(dt)
     hour12 = loc.hour % 12 or 12
@@ -309,8 +313,13 @@ def _my_lang(user):
 def _room_open(m):
     """Open from 15 minutes before the start until the meeting ends; never once completed or cancelled."""
     now = timezone.now()
-    return (m.platform == 'woddi' and m.status in ('scheduled', 'in_progress')
-            and m.starts_at - timezone.timedelta(minutes=15) <= now <= m.ends_at + timezone.timedelta(minutes=30))
+    if not (m.platform == 'woddi' and m.status in ('scheduled', 'in_progress')):
+        return False
+    if m.starts_at and now < m.starts_at - timezone.timedelta(minutes=15):
+        return False
+    if m.ends_at and now > m.ends_at + timezone.timedelta(minutes=30):
+        return False
+    return True
 
 
 @login_required
@@ -324,8 +333,10 @@ def room_view(request, pk):
             messages.warning(request, 'This meeting was cancelled, so the WODDI Room is closed.')
         elif m.status == 'completed':
             messages.info(request, 'This meeting has ended, so the WODDI Room is closed.')
-        elif now > m.ends_at:
+        elif m.ends_at and now > m.ends_at:
             messages.warning(request, 'The scheduled time for this meeting has elapsed (starts %s · ends %s), so the WODDI Room is closed.' % (_fmt_12h(m.starts_at), _fmt_12h(m.ends_at)))
+        elif not m.starts_at:
+            messages.info(request, 'The WODDI Room is not available for this meeting.')
         else:
             opens = m.starts_at - timezone.timedelta(minutes=15)
             messages.info(request, 'The WODDI Room opens 15 minutes before the start time, at %s (Meeting starts: %s · ends: %s).' % (_fmt_12h(opens), _fmt_12h(m.starts_at), _fmt_12h(m.ends_at)))

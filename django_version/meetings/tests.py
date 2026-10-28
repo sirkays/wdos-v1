@@ -56,6 +56,29 @@ class MeetingsFlow(TestCase):
         self.client.force_login(other)
         self.assertEqual(self.client.get(reverse('meetings:detail', args=[m.pk])).status_code, 404)
 
+    def test_meeting_without_times_can_be_created_and_room_is_open(self):
+        from meetings.views import _room_open
+        self.client.force_login(self.hq)
+        r = self.client.post(reverse('meetings:new'), {
+            'title': 'Open room', 'agenda': '', 'org_unit': self.unit.pk, 'mode': 'virtual', 'platform': 'woddi',
+            'location': '', 'audience': 'unit', 'starts_at': '', 'ends_at': ''})
+        m = Meeting.objects.get(title='Open room')
+        self.assertRedirects(r, reverse('meetings:detail', args=[m.pk]))
+        self.assertIsNone(m.starts_at)
+        self.assertIsNone(m.ends_at)
+        self.assertTrue(_room_open(m))
+        self.assertContains(self.client.get(reverse('meetings:detail', args=[m.pk])), 'No set time')
+        self.assertContains(self.client.get(reverse('meetings:list')), 'No set time')
+        m.status = 'completed'
+        m.save()
+        self.assertFalse(_room_open(m))
+        # an end time without a start time is rejected
+        r = self.client.post(reverse('meetings:new'), {
+            'title': 'Bad', 'org_unit': self.unit.pk, 'mode': 'virtual', 'platform': 'woddi', 'audience': 'unit',
+            'starts_at': '', 'ends_at': '2030-01-01T10:00'})
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Meeting.objects.filter(title='Bad').exists())
+
     def test_manager_can_delete_meeting_and_member_cannot(self):
         from unittest import mock
         now = timezone.now()

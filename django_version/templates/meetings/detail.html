@@ -122,6 +122,14 @@
     </div>
 
     <!-- Dedicated Full-Width Schedule Row (Start & End Time) -->
+    {% if not m.starts_at %}
+    <div class="mt-4 pt-4 border-t border-slate-100">
+      <div class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-2.5 text-sm font-semibold text-slate-700">
+        <svg class="text-woddi-600 shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        No set time &middot; the room is open whenever the host starts the meeting.
+      </div>
+    </div>
+    {% else %}
     <div class="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-2.5">
         <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-woddi-50 text-woddi-600">
@@ -139,10 +147,11 @@
         </span>
         <div class="min-w-0">
           <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 leading-none">End Time</div>
-          <div class="text-sm font-extrabold text-slate-900 mt-1 whitespace-nowrap">{{ m.ends_at|date:"D j M Y, g:i A T" }}</div>
+          <div class="text-sm font-extrabold text-slate-900 mt-1 whitespace-nowrap">{% if m.ends_at %}{{ m.ends_at|date:"D j M Y, g:i A T" }}{% else %}Not set{% endif %}</div>
         </div>
       </div>
     </div>
+    {% endif %}
   </section>
 
   {% if mgr %}

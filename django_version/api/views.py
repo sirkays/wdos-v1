@@ -364,8 +364,8 @@ def api_meetings(request):
                 'organiser_name': m.organiser.full_name if m.organiser else None,
                 'mode': m.mode,
                 'location': m.location,
-                'starts_at': m.starts_at.isoformat(),
-                'ends_at': m.ends_at.isoformat(),
+                'starts_at': m.starts_at.isoformat() if m.starts_at else None,
+                'ends_at': m.ends_at.isoformat() if m.ends_at else None,
                 'status': m.status,
             })
         return JsonResponse(meetings, safe=False)

@@ -650,20 +650,26 @@
       <div class="sc-section">
         <div class="sc-section-title">
           <span class="step-badge">3</span>
-          Date &amp; Time
+          Date &amp; Time <span class="hint" style="font-weight:600;">(optional)</span>
         </div>
 
+        <label class="flex items-start gap-2.5 mb-3 cursor-pointer select-none" style="font-weight:600;font-size:13px;">
+          <input type="checkbox" id="schedule-toggle" onchange="toggleSchedule(this.checked)" {% if form.starts_at.value or form.ends_at.value %}checked{% endif %} style="margin-top:3px;">
+          <span>Set a start and end time<br><span style="font-weight:500;font-size:12px;color:#64748b;">Leave this off for a meeting with no set time. The room can then be opened by the host whenever you are ready.</span></span>
+        </label>
+
+        <div id="schedule-fields" style="{% if not form.starts_at.value and not form.ends_at.value %}display:none;{% endif %}">
         <div class="sc-grid-2">
           <div class="sc-field">
-            <label for="id_starts_at">Start Date &amp; Time * <span class="hint">(When the meeting begins)</span></label>
-            <input type="datetime-local" name="starts_at" id="id_starts_at" required value="{{ form.starts_at.value|default:'' }}" onchange="handleStartChange(); updateSchedulePreview();" oninput="updateSchedulePreview()">
+            <label for="id_starts_at">Start Date &amp; Time <span class="hint">(When the meeting begins)</span></label>
+            <input type="datetime-local" name="starts_at" id="id_starts_at" value="{{ form.starts_at.value|default:'' }}" onchange="handleStartChange(); updateSchedulePreview();" oninput="updateSchedulePreview()">
             <div id="starts-at-preview" class="mt-1.5 text-xs font-semibold text-woddi-700"></div>
             {% if form.starts_at.errors %}<div class="sc-field-error">{{ form.starts_at.errors }}</div>{% endif %}
           </div>
 
           <div class="sc-field">
-            <label for="id_ends_at">End Date &amp; Time * <span class="hint">(When the meeting closes)</span></label>
-            <input type="datetime-local" name="ends_at" id="id_ends_at" required value="{{ form.ends_at.value|default:'' }}" onchange="updateSchedulePreview()" oninput="updateSchedulePreview()">
+            <label for="id_ends_at">End Date &amp; Time <span class="hint">(When the meeting closes; optional)</span></label>
+            <input type="datetime-local" name="ends_at" id="id_ends_at" value="{{ form.ends_at.value|default:'' }}" onchange="updateSchedulePreview()" oninput="updateSchedulePreview()">
             <div id="ends-at-preview" class="mt-1.5 text-xs font-semibold text-slate-600"></div>
             {% if form.ends_at.errors %}<div class="sc-field-error">{{ form.ends_at.errors }}</div>{% endif %}
           </div>
@@ -682,6 +688,7 @@
           <button type="button" class="sc-duration-btn active" onclick="setDurationMinutes(60)">1 hour</button>
           <button type="button" class="sc-duration-btn" onclick="setDurationMinutes(90)">1.5 hours</button>
           <button type="button" class="sc-duration-btn" onclick="setDurationMinutes(120)">2 hours</button>
+        </div>
         </div>
       </div>
 
@@ -785,6 +792,22 @@
     updateSchedulePreview();
   }
 
+  function toggleSchedule(on) {
+    var box = document.getElementById('schedule-fields');
+    var startInput = document.getElementById('id_starts_at');
+    var endInput = document.getElementById('id_ends_at');
+    box.style.display = on ? '' : 'none';
+    startInput.disabled = !on;
+    endInput.disabled = !on;
+    if (on && !startInput.value) {
+      var now = new Date();
+      now.setHours(now.getHours() + 1, 0, 0, 0);
+      startInput.value = formatDateTime(now);
+      endInput.value = formatDateTime(new Date(now.getTime() + 60 * 60000));
+    }
+    updateSchedulePreview();
+  }
+
   function format12Hour(date) {
     if (!date || isNaN(date.getTime())) return '';
     var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -879,13 +902,7 @@
   document.addEventListener('DOMContentLoaded', function() {
     var startInput = document.getElementById('id_starts_at');
     var endInput = document.getElementById('id_ends_at');
-    if (!startInput.value) {
-      var now = new Date();
-      now.setHours(now.getHours() + 1, 0, 0, 0);
-      startInput.value = formatDateTime(now);
-      var end = new Date(now.getTime() + 60 * 60000);
-      endInput.value = formatDateTime(end);
-    }
+    toggleSchedule(document.getElementById('schedule-toggle').checked);
     updateSchedulePreview();
     var accessSel = document.getElementById('id_access');
     if (accessSel) {

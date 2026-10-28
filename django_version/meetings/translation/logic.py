@@ -71,10 +71,11 @@ def draft_minutes(meeting, segments, attendees):
     """A transcript digest for the leader to edit and approve; it is not saved until she closes the meeting."""
     s = meeting.starts_at
     e = meeting.ends_at
-    s_time = f"{s.hour % 12 or 12}:{s:%M} {'AM' if s.hour < 12 else 'PM'}"
-    e_time = f"{e.hour % 12 or 12}:{e:%M} {'AM' if e.hour < 12 else 'PM'}"
-    lines = [f'MINUTES (draft from live transcript): {meeting.title}',
-             f'Starts: {s:%A %d %B %Y}, {s_time} UTC · Ends: {e:%A %d %B %Y}, {e_time} UTC', '',
+
+    def _fmt(d):
+        return f"{d:%A %d %B %Y}, {d.hour % 12 or 12}:{d:%M} {'AM' if d.hour < 12 else 'PM'} UTC"
+    when = f'Starts: {_fmt(s)} · Ends: {_fmt(e)}' if s and e else (f'Starts: {_fmt(s)}' if s else 'No set time')
+    lines = [f'MINUTES (draft from live transcript): {meeting.title}', when, '',
              'Present: ' + (', '.join(attendees) if attendees else 'not recorded'), '', 'Discussion:']
     lines += [f'- {s.speaker}: {s.text}' for s in segments]
     lines += ['', 'Decisions:', '- ', '', 'Actions (owner, due date):', '- ']

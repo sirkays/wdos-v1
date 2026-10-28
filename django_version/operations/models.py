@@ -116,8 +116,9 @@ class Meeting(models.Model):
     organiser = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True, related_name='organised_meetings')
     mode = models.CharField(max_length=20, choices=MeetingMode.choices, default=MeetingMode.VIRTUAL)
     location = models.CharField(max_length=255, blank=True, default='')
-    starts_at = models.DateTimeField()
-    ends_at = models.DateTimeField()
+    # Both optional: a meeting with no times is an open room the host can start any time (until ended or cancelled).
+    starts_at = models.DateTimeField(null=True, blank=True)
+    ends_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=MeetingStatus.choices, default=MeetingStatus.SCHEDULED)
     minutes = models.TextField(blank=True, default='')
     # Migration 052: platform + audience
@@ -141,7 +142,7 @@ class Meeting(models.Model):
         verbose_name_plural = 'Meetings'
 
     def __str__(self):
-        return f"{self.title} ({self.starts_at.strftime('%Y-%m-%d %H:%M')})"
+        return f"{self.title} ({self.starts_at.strftime('%Y-%m-%d %H:%M')})" if self.starts_at else f"{self.title} (no set time)"
 
 
 class MeetingAttendance(models.Model):

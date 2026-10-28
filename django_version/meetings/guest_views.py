@@ -24,7 +24,7 @@ def _meeting_any(code):
 
 
 def _is_ended(m):
-    return m.status in ('completed', 'cancelled') or timezone.now() > m.ends_at + timezone.timedelta(minutes=30)
+    return m.status in ('completed', 'cancelled') or bool(m.ends_at and timezone.now() > m.ends_at + timezone.timedelta(minutes=30))
 
 
 def _meeting(code):
@@ -134,9 +134,9 @@ def room_view(request, code):
     if not g or g.status != 'admitted':
         return redirect('meetings:guest_wait', code=code)
     if not _room_open(m):
-        if timezone.now() > m.ends_at:
+        if m.ends_at and timezone.now() > m.ends_at:
             return render(request, 'meetings/guest_ended.html', _ctx(request, m=m))
-        opens_in = int((m.starts_at - timezone.timedelta(minutes=15) - timezone.now()).total_seconds())
+        opens_in = int((m.starts_at - timezone.timedelta(minutes=15) - timezone.now()).total_seconds()) if m.starts_at else 0
         return render(request, 'meetings/guest_wait.html', _ctx(request, m=m, g=g, early=True, opens_in=max(opens_in, 0)))
     missing = livekit.missing_settings()
     return render(request, 'meetings/guest_room.html', _ctx(

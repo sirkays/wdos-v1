@@ -22,9 +22,11 @@ def open_rooms(only=None):
     # otherwise one dropped Postgres connection would break the room lookup (and so every new meeting) for good.
     close_old_connections()
     now = timezone.now()
-    qs = Meeting.objects.filter(platform='woddi', status__in=('scheduled', 'in_progress'),
-                                starts_at__lte=now + timezone.timedelta(minutes=15),
-                                ends_at__gte=now - timezone.timedelta(minutes=30))
+    from django.db.models import Q
+    # Meetings with no set time (null start/end) count as always open.
+    qs = Meeting.objects.filter(platform='woddi', status__in=('scheduled', 'in_progress')).filter(
+        Q(starts_at__isnull=True) | Q(starts_at__lte=now + timezone.timedelta(minutes=15))).filter(
+        Q(ends_at__isnull=True) | Q(ends_at__gte=now - timezone.timedelta(minutes=30)))
     if only:
         qs = qs.filter(pk=only)
     return {str(m.pk): livekit.room_name(m) for m in qs}

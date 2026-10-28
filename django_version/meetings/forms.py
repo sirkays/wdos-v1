@@ -6,11 +6,11 @@ from operations.models import Meeting
 class MeetingForm(forms.ModelForm):
     starts_at = forms.DateTimeField(
         widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
-        input_formats=['%Y-%m-%dT%H:%M'],
+        input_formats=['%Y-%m-%dT%H:%M'], required=False,
     )
     ends_at = forms.DateTimeField(
         widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
-        input_formats=['%Y-%m-%dT%H:%M'],
+        input_formats=['%Y-%m-%dT%H:%M'], required=False,
     )
 
     class Meta:
@@ -41,7 +41,9 @@ class MeetingForm(forms.ModelForm):
     def clean(self):
         d = super().clean()
         s, e = d.get('starts_at'), d.get('ends_at')
-        if s and e and e <= s:
+        if e and not s:
+            self.add_error('starts_at', 'Set a start time too, or clear the end time.')
+        elif s and e and e <= s:
             self.add_error('ends_at', 'The meeting must end after it starts.')
         if not d.get('access'):
             d['access'] = 'members'

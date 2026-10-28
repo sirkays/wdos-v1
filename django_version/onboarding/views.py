@@ -131,7 +131,7 @@ def _workspace(request, tab):
         open_tasks = Task.objects.filter(assigned_to=u).exclude(status='completed')
         ctx['tasks'] = open_tasks[:8]
         ctx['task_count'] = open_tasks.count()
-        ctx['meetings'] = Meeting.objects.filter(scope, starts_at__gte=timezone.now())[:5]
+        ctx['meetings'] = Meeting.objects.filter(scope).filter(Q(starts_at__gte=timezone.now()) | Q(starts_at__isnull=True, status='scheduled'))[:5]
         ctx['activity_count'] = ActivityRecord.objects.filter(scope | mine).distinct().count()
         mq = Profile.objects.exclude(pk=u.pk)
         oq = OrgUnit.objects.all()
