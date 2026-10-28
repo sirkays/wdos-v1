@@ -1166,20 +1166,21 @@
 
     /* Single-Row Floating Bottom Pill Bar on Mobile */
     .meet-dock {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       justify-items: center;
-      min-height: 68px;
-      padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+      min-height: 64px;
+      padding: 6px 10px calc(8px + env(safe-area-inset-bottom, 0px));
       background: linear-gradient(180deg, rgba(15, 18, 24, 0.4) 0%, #12151c 45%);
       border-top: 0;
     }
     .meet-controls {
       width: auto;
       max-width: 100%;
+      box-sizing: border-box;
       justify-self: center;
       justify-content: center;
-      gap: 8px;
-      padding: 6px 8px !important;
+      gap: 6px;
+      padding: 5px 6px !important;
       background: rgba(30, 35, 48, 0.94) !important;
       border: 1px solid rgba(255, 255, 255, 0.12) !important;
       border-radius: 999px !important;
@@ -1189,31 +1190,40 @@
     .meet-dock-right { display: none !important; }
 
     .meet-controls .btn {
-      height: 46px !important;
-      min-height: 46px !important;
-      padding: 0 16px !important;
-      font-size: 13px !important;
-      gap: 7px !important;
+      height: 42px !important;
+      min-height: 42px !important;
+      padding: 0 13px !important;
+      font-size: 12.5px !important;
+      gap: 6px !important;
     }
     .meet-controls .btn.speak {
-      padding: 0 18px !important;
+      flex: 0 1 auto !important;
+      min-width: 0 !important;
+      padding: 0 13px !important;
+    }
+    .meet-controls .btn.speak .btn-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .meet-controls .btn#cam {
-      width: 46px !important;
-      min-width: 46px !important;
+      width: 42px !important;
+      min-width: 42px !important;
       padding: 0 !important;
+      flex-shrink: 0;
     }
     .meet-controls .btn#cam .btn-label {
       display: none;
     }
     .meet-controls .btn.btn-circle {
-      width: 46px !important;
-      min-width: 46px !important;
-      height: 46px !important;
+      width: 42px !important;
+      min-width: 42px !important;
+      height: 42px !important;
+      flex-shrink: 0;
     }
     .meet-controls .btn.danger {
-      padding: 0 18px !important;
-      height: 46px !important;
+      padding: 0 14px !important;
+      height: 42px !important;
+      flex-shrink: 0;
     }
   }
 </style>
