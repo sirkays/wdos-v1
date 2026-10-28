@@ -45,7 +45,7 @@ git push -u origin main
 * Run a load rehearsal with 100, then 300, then 1000 test joiners (LiveKit CLI: `lk load-test`).
 * Check the Render **Metrics** tab during the rehearsal; raise `wdos-web` to `pro` if CPU stays above ~70%.
 * Open the room 15 minutes early (the app already allows this) so people trickle in instead of all joining at once.
-* Keep cameras off for the audience (see `docs`/analysis notes: the client subscribes to every video track).
+* Keep audience cameras and microphones off: every participant's browser subscribes to every camera, and the interpreter bot starts one Azure recogniser per open microphone.
 
 ## Notes
 * Media (meeting files) lives on a 5 GB Render disk mounted at `/var/data`. A service with a disk runs as a single instance (no horizontal scaling; scale up with a bigger plan instead).
