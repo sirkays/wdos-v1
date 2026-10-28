@@ -1,0 +1,10 @@
+Django>=5.1,<6.0
+whitenoise>=6.8.0
+requests>=2.31.0
+livekit-api>=1.2.2,<2
+livekit>=1.1.21,<2
+azure-cognitiveservices-speech>=1.40
+# --- production (Render) ---
+gunicorn>=22.0
+psycopg[binary]>=3.2
+dj-database-url>=2.2

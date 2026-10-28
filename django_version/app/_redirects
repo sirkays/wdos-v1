@@ -1,0 +1,4 @@
+# Phase 221: old builds still ask for /config.json while they update
+/config.json  /wdos-config.json  200
+/wgmn  /#/wgmn  302
+/wnnn  /#/wnnn  302

@@ -1,0 +1,54 @@
+{% load static %}<!doctype html>
+<html lang="{{ lang }}" dir="{{ direction }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Activation — WDOS</title>
+<link rel="stylesheet" href="{% static 'accounts/design.css' %}"><link rel="stylesheet" href="{% static 'accounts/refinements.css' %}"><link rel="stylesheet" href="{% static 'accounts/onboarding.css' %}">
+{% include '_tailwind.html' %}
+<style>
+.ob-bar{flex:1;height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden}.ob-bar span{display:block;height:100%;background:#d4006a}
+.ob-dots{display:flex;gap:8px;margin-top:14px}.ob-dot{width:28px;height:28px;border-radius:50%;border:1px solid #cbd5e1;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#475569}.ob-dot--done{background:#d4006a;border-color:#d4006a;color:#fff}.ob-dot--now{border-color:#d4006a;color:#d4006a;font-weight:700}
+.ob-scroller{height:300px;overflow:auto;border:1px solid #e2e8f0;border-radius:12px;padding:18px;background:#fff;margin:12px 0}
+.ob-row{display:flex;gap:10px;align-items:center}.ob-hint{color:#475569;font-size:13px;margin:8px 0}
+.notice{background:#fff0f6;border:1px solid #f8ccd7;border-radius:10px;padding:10px 14px;font-size:13px;color:#7a1646;margin-bottom:16px}
+.q{margin:14px 0}.q label{display:block;font-weight:600;font-size:13px;margin-bottom:6px;color:#0f172a}.q textarea{width:100%;min-height:76px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;box-sizing:border-box}
+.ack{display:flex;gap:10px;align-items:flex-start;margin:10px 0;font-size:13px}.ob-err{color:#9b164b;font-size:13px;margin-top:8px}.saved{font-size:12px;color:#64748b}
+</style>
+{% include 'onboarding/_sidebar_css.html' %}</head><body class="bg-slate-50 text-slate-900 antialiased">
+<aside class="sidebar"><a href="{% url 'activation:home' %}" class="brand-link"><img class="brand" src="{% static 'accounts/assets/woddi-logo.png' %}" alt="WODDI"></a>
+<div class="nav-label">Candidate</div><a class="navitem active" href="{% url 'activation:home' %}">My activation</a>
+<div class="sidebottom"><a class="navitem" href="{% url 'accounts:help' %}">Help</a>
+<form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button type="submit" class="navitem sign-out-btn">Sign out</button></form></div></aside>
+<main class="main"><div class="topbar"><div class="breadcrumb">Candidate <span> / </span> <span>Activation</span></div></div>
+<div class="content">
+<div class="pagehead mb-5"><div><div class="eyebrow text-xs font-extrabold uppercase tracking-wider text-woddi-600">{{ act.get_route_display }} · {{ act.get_status_display }}</div><h1 class="text-2xl font-extrabold text-slate-900 mt-0.5">Your activation</h1>
+<p class="text-sm text-slate-600 mt-1">{% if act.deadline %}Deadline: {{ act.deadline|date:"j M Y, H:i" }}{% endif %}</p></div></div>
+<div class="notice">{{ notice }}</div>
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div class="ob-row"><div class="ob-bar"><span style="width:{{ percent }}%"></span></div><b>{{ done|length }}/{{ total }}</b></div>
+<div class="ob-dots">{% for d in days %}<span class="ob-dot{% if d.day in done %} ob-dot--done{% elif d.day == cur.day %} ob-dot--now{% endif %}" title="Day {{ d.day }}: {{ d.title }}">{% if d.day in done %}✓{% else %}{{ d.day }}{% endif %}</span>{% endfor %}</div></section>
+
+{% if locked %}
+<section class="state-card rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="margin-top:20px"><h2>{{ msg.incomplete.title }}</h2><p>{{ msg.incomplete.body }}</p>
+{% if act.extension_status == 'requested' %}<p><b>{{ msg.ext_received.title }}</b><br>{{ msg.ext_received.body }}</p>
+{% elif act.extension_status == 'declined' %}<p>{{ msg.ext_declined.body }}</p>
+{% else %}<div class="q"><label for="reason">Request more time (tell us why)</label><textarea id="reason"></textarea></div><button class="btn primary" id="ext" data-url="{% url 'activation:extension' %}">Request extension</button>{% endif %}
+{% csrf_token %}</section>
+{% elif finished %}
+<section class="state-card rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="margin-top:20px"><h2>{{ msg.submitted.title|default:"Assessment submitted" }}</h2><p>{{ msg.submitted.body|default:"Thank you. Your activation is complete and your assessment is with the reviewer." }}</p><p>Activation is not selection or appointment. HQ will tell you the outcome.</p></section>
+{% elif show_assessment and assessment %}
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="margin-top:20px" id="assess" data-url="{% url 'activation:assessment' %}"><div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">Leadership Understanding &amp; Readiness Assessment</h2></div>
+{% if assessment.status == 'returned' %}<p><b>Returned for correction:</b> {{ assessment.return_note }}</p>{% endif %}
+{% for q in questions %}<div class="q"><label for="a{{ q.seq }}">{{ q.seq }}. {{ q.question }}</label><textarea id="a{{ q.seq }}" data-seq="{{ q.seq }}"></textarea></div>{% endfor %}
+<button class="btn primary" id="submit-assess">Submit assessment</button><div class="ob-err" id="err"></div>{% csrf_token %}</section>
+{% else %}
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="margin-top:20px" id="day" data-day="{{ cur.day }}" data-content="{% if cur.content %}1{% endif %}" data-save="{% url 'activation:save' cur.day %}" data-complete="{% url 'activation:complete' cur.day %}">
+<div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">Day {{ cur.day }} of {{ total }} — {{ cur.title }}</h2></div>
+<p>{{ cur.purpose }}</p><p>{{ cur.instruction }}</p>
+{% if cur.notice %}<div class="notice">{{ cur.notice }}</div>{% endif %}
+{% for c in cur.content %}<div class="ob-scroller" data-doc="{% url 'activation:doc' 'x' %}" data-name="{{ c.doc|cut:'/content/' }}">{% if c.sections %}<p class="saved">Focus on: {{ c.sections|join:" · " }}</p>{% endif %}<article>Loading…</article></div>{% endfor %}
+{% if cur.needs_profile %}<p class="saved">Your profile is confirmed from your account: {{ request.user.email }}.</p>{% endif %}
+{% for q in cur.questions %}<div class="q"><label for="q-{{ q.key }}">{{ q.label }}</label><textarea id="q-{{ q.key }}" data-key="{{ q.key }}"></textarea></div>{% endfor %}
+{% for a in cur.acks %}<label class="ack"><input type="checkbox" data-ack="{{ forloop.counter0 }}"> <span>{{ a }}</span></label>{% endfor %}
+<div class="ob-row"><button class="btn primary" id="next">{% if cur.has_assessment %}Continue to assessment{% else %}Complete day {{ cur.day }}{% endif %}</button><span class="saved" id="saved"></span></div><div class="ob-err" id="err"></div>{% csrf_token %}</section>
+{% endif %}
+</div></main>
+{{ answers|json_script:"saved-answers" }}{{ acked|json_script:"saved-acks" }}{% if assessment %}{{ assessment.answers|json_script:"saved-assess" }}{% endif %}
+<script src="{% static 'activation/activation.js' %}" defer></script></body></html>

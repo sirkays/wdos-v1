@@ -1,0 +1,310 @@
+{% load static %}<!doctype html>
+<html lang="{{ lang }}" dir="{{ language.dir }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ title }} · WDOS</title>
+  <link rel="stylesheet" href="{% static 'accounts/design.css' %}">
+  <link rel="stylesheet" href="{% static 'accounts/refinements.css' %}">
+  <link rel="stylesheet" href="{% static 'accounts/live.css' %}">
+  <script src="{% static 'accounts/auth.js' %}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">{{ translations.skip }}</a>
+  <div class="auth-wrap">
+    <aside class="auth-brand">
+      <a href="{% url 'accounts:welcome' %}">
+        <img class="brand" src="{% static 'accounts/assets/woddi-logo.png' %}" alt="WODDI — The Nurturer" width="170" height="72">
+      </a>
+      <div class="eyebrow">{{ translations.brand_eyebrow }}</div>
+      <h1>{{ translations.brand_line1 }}<br>{{ translations.brand_line2 }}<br><em>{{ translations.brand_line3 }}</em></h1>
+      <p>{{ translations.brand_lede }}</p>
+      <div class="brand-art">
+        <div class="network-line"><strong>WGMN</strong><span>{{ translations.wgmna }}</span></div>
+        <div class="network-line"><strong>WNNN</strong><span>{{ translations.wnnna }}</span></div>
+      </div>
+      <div class="motto">{{ translations.motto }}</div>
+    </aside>
+
+    <main class="auth-form" id="main">
+      <div class="eyebrow">{{ translations.welcome|upper }}</div>
+      <h1>{{ title }}</h1>
+      <p>{{ lede }}</p>
+      <div class="reference-spacing" aria-hidden="true"></div>
+      <div id="offline" role="status" hidden>{{ translations.offline }}</div>
+
+      {% if masked_destination %}
+        <p class="destination" role="status">{{ translations.code_destination }} <strong>{{ masked_destination }}</strong></p>
+      {% endif %}
+
+      {% if help_page %}
+        <section class="state-card supplemental-card">
+          <h2>{{ translations.help_safe_title }}</h2>
+          <p>{{ translations.help_safe_text }}</p>
+          <a class="btn primary" href="{% url 'accounts:recover' %}">
+            {% include 'accounts/arrow.html' %}
+            {{ translations.recovery_action }}
+          </a>
+          <p class="support-links"><a href="{% url 'accounts:verify' %}">{{ translations.verify_action }}</a> · <a href="{{ contact_url }}" target="_blank" rel="noopener noreferrer">{{ translations.official_contact }}</a></p>
+        </section>
+      {% elif policy_page %}
+        <section class="state-card supplemental-card">
+          <p>{{ translations.policy_honesty }}</p>
+          <a class="btn primary" href="{{ contact_url }}" target="_blank" rel="noopener noreferrer">
+            {% include 'accounts/arrow.html' %}
+            {{ translations.official_contact }}
+          </a>
+        </section>
+      {% endif %}
+
+      {% if status_kind %}
+        <section class="state-card status-card status-{{ status_kind }}">
+          <span class="state-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l9 4c0 8-3 12-9 15C6 19 3 15 3 7z M8 12l3 3 5-6"/></svg></span>
+          <h2>{{ status_title }}</h2>
+          <p>{{ status_text }}</p>
+          <details class="status-explainer" data-status-explainer>
+            <summary aria-label="{{ translations.status_explainer }}">ⓘ</summary>
+            <div class="status-explainer-popup" role="note">{{ status_explainer_text }}</div>
+          </details>
+          {% if onboarding_available %}<a class="btn primary" href="{% url 'onboarding:start' %}">{% include 'accounts/arrow.html' %}{{ translations.continue }}</a>{% endif %}
+          {% if status_action == 'verify' %}
+            <a class="btn primary" href="{% url 'accounts:verify' %}">{% include 'accounts/arrow.html' %}{{ translations.verify_action }}</a>
+          {% elif status_action == 'help' %}
+            <a class="btn primary" href="{% url 'accounts:help' %}">{% include 'accounts/arrow.html' %}{{ translations.get_support }}</a>
+          {% elif status_action == 'login' %}
+            <a class="btn primary" href="{% url 'accounts:login' %}">{% include 'accounts/arrow.html' %}{{ translations.sign_in_again }}</a>
+          {% elif status_action == 'invitation' %}
+            <a class="btn primary" href="{% url 'accounts:invitation' %}">{% include 'accounts/arrow.html' %}{{ translations.claim }}</a>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      {% if reset_requires_fragment or reset_proof_bound %}
+        <section class="state-card reset-missing" data-reset-missing{% if reset_proof_bound %} hidden{% endif %} role="status">
+          <h2>{{ translations.reset_missing_title }}</h2>
+          <p>{{ translations.reset_missing_text }}</p>
+          <a class="btn primary" href="{% url 'accounts:recover' %}">{% include 'accounts/arrow.html' %}{{ translations.fresh_link }}</a>
+        </section>
+      {% endif %}
+
+      {% if reset_invalid or reset_proof_bound or reset_requires_fragment %}
+        <section class="state-card reset-invalid" data-reset-invalid{% if not reset_invalid %} hidden{% endif %} role="alert">
+          <h2>{{ translations.link_expired }}</h2>
+          <p>{{ translations.link_expired_text }}</p>
+          <a class="btn primary" href="{% url 'accounts:recover' %}">{% include 'accounts/arrow.html' %}{{ translations.fresh_link }}</a>
+        </section>
+      {% endif %}
+
+      {% if verification_unbound %}
+        <section class="state-card">
+          <h2>{{ translations.verify_unbound_title }}</h2>
+          <p>{{ translations.verify_unbound_text }}</p>
+          <a class="btn primary" href="{% url 'accounts:register' %}">{% include 'accounts/arrow.html' %}{{ translations.register_action }}</a>
+        </section>
+      {% endif %}
+
+      {% if mfa_initial %}
+        <form method="post" class="auth-live-form mfa-begin" data-working-label="{{ translations.working }}">
+          {% csrf_token %}
+          <input type="hidden" name="begin" value="1">
+          <button class="btn primary" type="submit">{% include 'accounts/arrow.html' %}{{ translations.begin_mfa }}</button>
+          <p class="submit-status" role="status" aria-live="polite"></p>
+        </form>
+      {% endif %}
+
+      {% if form %}
+        <div{% if reset_requires_fragment %} hidden{% endif %}{% if screen == 'AUTH-07' %} data-reset-form{% if reset_proof_bound %} data-proof-bound="true"{% endif %}{% endif %}>
+          <p class="form-guidance">{{ translations.required }}</p>
+          <form method="post" class="auth-live-form" data-working-label="{{ translations.working }}" novalidate>
+            {% csrf_token %}
+            {% if screen == 'AUTH-07' %}
+              <input type="hidden" name="proof" id="id_proof" value="">
+              {% if reset_flow %}<input type="hidden" name="reset_flow" value="{{ reset_flow }}">{% endif %}
+            {% endif %}
+            {% if form.errors %}
+              <div class="error-summary" role="alert" tabindex="-1">
+                <strong>{{ translations.errors }}</strong>
+                {{ form.non_field_errors }}
+                {% for field in form %}{% for error in field.errors %}
+                  <p><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ error }}</a></p>
+                {% endfor %}{% endfor %}
+              </div>
+            {% endif %}
+
+            {% if dev_verify_code %}
+              <div style="background:#EEF2FF; border:1px solid #6366F1; border-radius:8px; padding:12px 16px; margin:16px 0; color:#312E81;">
+                <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:4px; color:#4F46E5;">Local Development Verification Code</span>
+                <span style="font-family:monospace; font-size:24px; font-weight:700; letter-spacing:4px; background:#FFFFFF; padding:4px 12px; border-radius:6px; border:1px solid #C7D2FE; display:inline-block;">{{ dev_verify_code }}</span>
+                <p style="font-size:12px; margin:6px 0 0 0; color:#4338CA;">Copy and paste the code above into the field below.</p>
+              </div>
+            {% endif %}
+
+            {% if dev_mfa_code %}
+              <div style="background:#EEF2FF; border:1px solid #6366F1; border-radius:8px; padding:12px 16px; margin:16px 0; color:#312E81;">
+                <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:4px; color:#4F46E5;">Local Development MFA Code</span>
+                <span style="font-family:monospace; font-size:24px; font-weight:700; letter-spacing:4px; background:#FFFFFF; padding:4px 12px; border-radius:6px; border:1px solid #C7D2FE; display:inline-block;">{{ dev_mfa_code }}</span>
+                <p style="font-size:12px; margin:6px 0 0 0; color:#4338CA;">Copy and paste the code above into the field below.</p>
+              </div>
+            {% endif %}
+
+            {% if secret %}
+              <section class="setup-secret">
+                <h2>{{ translations.setup_title }}</h2>
+                <p>{{ translations.setup_text }}</p>
+                <code>{{ secret }}</code>
+                <p>{{ translations.setup_keep }}</p>
+              </section>
+            {% endif %}
+
+            <div class="fields">
+              {% for field in form %}
+                {% if field.name == 'remember' %}
+                  <div class="remember-row">
+                    <label>{{ field }}<span>{{ field.label }}</span></label>
+                    <a href="{% url 'accounts:recover' %}">{{ translations.forgot }}</a>
+                  </div>
+                {% else %}
+                  <div class="field">
+                    {{ field.label_tag }}
+                    <div class="password-wrap">
+                      {{ field }}
+                      {% if field.field.widget.input_type == 'password' %}
+                        <button type="button" class="show-password" data-target="{{ field.id_for_label }}" data-show-label="{{ translations.show }}" data-hide-label="{{ translations.hide }}" aria-controls="{{ field.id_for_label }}" aria-label="{{ translations.show }}" aria-pressed="false" title="{{ translations.show }}">
+                          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5-9.5-5-9.5-5Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                        </button>
+                      {% endif %}
+                    </div>
+                    {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+            <button class="btn primary" type="submit">
+              {% include 'accounts/arrow.html' %}
+              {{ action }}
+            </button>
+            <p class="submit-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+        {% if screen == 'AUTH-07' %}<script>(function () { const fragment = location.hash.slice(1); if (fragment && fragment !== 'main' && !/^id_[A-Za-z0-9_-]+$/.test(fragment)) { const panel = document.querySelector('[data-reset-form]'); if (panel) panel.hidden = true; } }());</script>{% endif %}
+      {% endif %}
+
+      {% if verification_bound %}
+        <div class="resend-panel" data-resend-issued-at="{{ resend_issued_at }}" data-resend-remaining="{{ resend_remaining }}" data-resend-wait="{{ translations.resend_wait }}" data-resend-ready="{{ translations.resend_ready }}">
+          {% if resend_feedback %}<p class="resend-feedback" role="status">{{ resend_feedback }}</p>{% endif %}
+          <form method="post" action="{% url 'accounts:resend' %}">
+            {% csrf_token %}
+            <button class="text-button" type="submit" data-resend-button{% if resend_remaining %} disabled{% endif %}>{{ translations.resend_code }}</button>
+            <span data-resend-status aria-live="polite">{% if resend_remaining %}{{ translations.resend_wait }} <b data-resend-countdown>{{ resend_remaining }}</b>s{% else %}{{ translations.resend_ready }}{% endif %}</span>
+          </form>
+          <a class="textlink" href="{% url 'accounts:register' %}">{{ translations.change_address }}</a>
+        </div>
+      {% endif %}
+
+      {% if invitation_form and form.errors %}
+        <p class="invitation-help"><a href="{% url 'accounts:help' %}">{{ translations.invitation_help }}</a></p>
+      {% endif %}
+
+      {% if codes %}
+        <ul class="recovery-codes">{% for code in codes %}<li><code>{{ code }}</code></li>{% endfor %}</ul>
+        <a class="btn primary" href="{{ workspace_url|default_if_none:'' }}">{% include 'accounts/arrow.html' %}{{ translations.saved_codes }}</a>
+      {% endif %}
+
+      {% if recovery_requested %}
+        <a class="btn primary state-action" href="{% url 'accounts:login' %}">{% include 'accounts/arrow.html' %}{{ translations.back }}</a>
+      {% endif %}
+      {% if success_action == 'login' %}
+        <a class="btn primary state-action" href="{% url 'accounts:login' %}">{% include 'accounts/arrow.html' %}{{ translations.go_sign_in }}</a>
+      {% endif %}
+      {% if invitation_linked %}
+        <a class="btn primary state-action" href="{% url 'accounts:status' %}">{% include 'accounts/arrow.html' %}{{ translations.continue_account }}</a>
+      {% endif %}
+
+      {% if mfa_challenge %}
+        <p class="lost-factor"><strong>{{ translations.lost_factor_title }}</strong><br>{{ translations.lost_factor_text }} <a href="{% url 'accounts:help' %}">{{ translations.contact_support }}</a></p>
+      {% endif %}
+
+      {% if screen == 'AUTH-01' %}
+        <div class="welcome-network-selection" role="region" aria-label="Select your network">
+          <div class="welcome-network-grid">
+            <!-- WGMN Visual Identity Card -->
+            <div class="welcome-network-card network-choice-card card-wgmn">
+              <div class="network-card-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <img src="{% static 'accounts/assets/wgmn-logo.svg' %}" alt="WGMN Logo" class="network-card-logo" width="28" height="28">
+                  <span class="network-badge badge-wgmn">WGMN &middot; 30+</span>
+                </div>
+                <span class="network-age-band">Mothers &amp; Adult Women (30+)</span>
+              </div>
+              <h2 class="network-card-title">WODDI Good Mother Network</h2>
+              <p class="network-card-desc">Family development, maternal health leadership, country chapters, and community empowerment.</p>
+              <div class="network-card-action">
+                <a class="btn primary btn-wgmn" href="{% url 'accounts:register' %}?network=WGMN">{% include 'accounts/arrow.html' %}Enter Good Mother Network</a>
+              </div>
+            </div>
+
+            <!-- WNN Visual Identity Card -->
+            <div class="welcome-network-card network-choice-card card-wnn">
+              <div class="network-card-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <img src="{% static 'accounts/assets/wnn-logo.svg' %}" alt="WNN Logo" class="network-card-logo" width="28" height="28">
+                  <span class="network-badge badge-wnn">WNN &middot; 18–29</span>
+                </div>
+                <span class="network-age-band">Young Women &amp; Youth (18–29)</span>
+              </div>
+              <h2 class="network-card-title">WODDI Next-Gen Nurturers Network</h2>
+              <p class="network-card-desc">Leadership acceleration, peer mentorship circles, digital skills, and next-gen community clusters.</p>
+              <div class="network-card-action">
+                <a class="btn primary btn-wnn" href="{% url 'accounts:register' %}?network=WNNN">{% include 'accounts/arrow.html' %}Enter Next-Gen Nurturers</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="auth-links"><a class="textlink" href="{% url 'accounts:login' %}">{{ translations.sign }}</a>
+      {% else %}
+        <div class="auth-links">
+          {% if screen == 'AUTH-02' %}<a class="textlink" href="{% url 'accounts:register' %}">{{ translations.create }}</a>
+          {% elif screen == 'AUTH-03' %}<a class="textlink" href="{% url 'accounts:login' %}">{{ translations.already_sign_in }}</a>
+          {% elif screen == 'AUTH-05' and not invitation_linked %}<a class="textlink" href="{% url 'accounts:status' %}">{{ translations.other }}</a>
+          {% elif screen == 'AUTH-06' and not recovery_requested %}<a class="textlink" href="{% url 'accounts:login' %}">{{ translations.back }}</a>
+          {% elif screen == 'AUTH-07' and not reset_invalid and not success_action %}<a class="textlink" href="{% url 'accounts:recover' %}">{{ translations.other }}</a>
+          {% elif screen == 'AUTH-08' %}<a class="textlink" href="{% url 'accounts:login' %}">{{ translations.other }}</a>
+          {% elif verification_unbound %}<a class="textlink" href="{% url 'accounts:login' %}">{{ translations.back }}</a>
+          {% endif %}
+      {% endif %}
+          <form method="get" class="language-picker">
+            <label for="language">{{ translations.language }}</label>
+            <select id="language" name="lang" aria-label="{{ translations.language }}" onchange="this.form.submit()">
+              {% for code, item in languages.items %}<option value="{{ code }}"{% if code == lang %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+            </select>
+            {% if screen == 'AUTH-07' and reset_flow %}<input type="hidden" name="reset_flow" value="{{ reset_flow }}">{% endif %}
+          </form>
+        </div>
+
+      <div class="notice cream-notice">
+        <span class="notice-shield" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l9 4c0 8-3 12-9 15C6 19 3 15 3 7z M8 12l3 3 5-6"/></svg></span>
+        <span>{% if note %}{{ note }}{% elif screen == 'AUTH-01' %}{{ translations.notice }}{% elif screen == 'AUTH-08' %}{{ translations.mfa_privacy_notice }}{% else %}{{ translations.privacy }}{% endif %}</span>
+      </div>
+
+      {% if account %}
+        <div class="account-summary"><strong>{{ account.display_name }}</strong><p>{{ translations.account_verified }} {% if account.person_id %}{{ translations.linked }}{% else %}{{ translations.not_linked }}{% endif %}</p></div>
+        <div class="session-actions">
+          {% if not account.person_id and not invitation_linked %}<a class="btn" href="{% url 'accounts:invitation' %}">{{ translations.claim }}</a>{% endif %}
+          <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="text-button" type="submit">{{ translations.sign_out }}</button></form>
+          <form method="post" action="{% url 'accounts:revoke' %}">{% csrf_token %}<button class="text-button" type="submit">{{ translations.sign_out_all }}</button></form>
+        </div>
+      {% endif %}
+
+      <footer class="smallprint">
+        <span>{{ translations.footer_brand }}</span>
+        <nav aria-label="{{ translations.footer_links }}">
+          <a href="{% url 'accounts:privacy' %}">{{ translations.footer_privacy }}</a>
+          <a href="{% url 'accounts:terms' %}">{{ translations.footer_terms }}</a>
+          <a href="{% url 'accounts:help' %}">{{ translations.footer_help }}</a>
+        </nav>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,63 @@
+{% extends 'meetings/base.html' %}
+{% block crumb_section %}<span class="bc-current">Meetings</span>{% endblock %}
+{% block body %}
+<div class="pagehead flex flex-wrap items-center justify-between gap-4 mb-6">
+  <div>
+    <div class="eyebrow text-xs font-extrabold uppercase tracking-wider text-woddi-600">{{ request.user.get_full_name|default:request.user.email }}</div>
+    <h1 class="text-2xl font-extrabold text-slate-900 mt-0.5">Meetings</h1>
+    <p class="text-sm text-slate-600 mt-1">Scheduled for your units and the audiences you belong to.</p>
+  </div>
+  {% if can_create %}
+  <a class="btn primary inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm" href="{% url 'meetings:new' %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Schedule a meeting
+  </a>
+  {% endif %}
+</div>
+
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+  <div class="panelhead flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+    <h2 class="text-base font-extrabold text-slate-900">Upcoming</h2>
+  </div>
+  {% if upcoming %}
+  <ul class="ws-list divide-y divide-slate-100">
+    {% for m in upcoming %}
+    <li class="py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <a href="{% url 'meetings:detail' m.pk %}" class="group">
+        <b class="text-sm font-bold text-slate-900 group-hover:text-woddi-600 transition-colors">{{ m.title }}</b><br>
+        <small class="text-xs text-slate-500">{{ m.starts_at|date:"D j M Y, H:i" }} · {% if m.access == 'anyone' %}Anyone with the link{% else %}{{ m.org_unit.name }}{% endif %}</small>
+      </a>
+      <span class="flex items-center gap-1.5">
+        {% if m.access == 'anyone' %}<span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">Guest Link</span>{% endif %}
+        <span class="chip">{{ m.get_platform_display }}</span>
+        <span class="chip grey">{{ m.get_status_display }}</span>
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="ws-empty text-sm text-slate-500 py-2">No upcoming meetings.</p>
+  {% endif %}
+</section>
+
+<section class="panel mt rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mt-5">
+  <div class="panelhead flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+    <h2 class="text-base font-extrabold text-slate-900">Past and cancelled</h2>
+  </div>
+  {% if past %}
+  <ul class="ws-list divide-y divide-slate-100">
+    {% for m in past %}
+    <li class="py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <a href="{% url 'meetings:detail' m.pk %}">
+        <b class="text-sm font-bold text-slate-800">{{ m.title }}</b><br>
+        <small class="text-xs text-slate-500">{{ m.starts_at|date:"D j M Y, H:i" }} · {{ m.org_unit.name }}</small>
+      </a>
+      <span class="chip grey">{{ m.get_status_display }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="ws-empty text-sm text-slate-500 py-2">Nothing here yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

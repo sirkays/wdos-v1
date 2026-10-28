@@ -1,0 +1,19 @@
+<style>
+/* Sidebar polish for the onboarding / activation shells (icons, spacing, sign-out). */
+.sidebar .brand-link{margin:0 4px 8px}
+.sidebar .nav-label{font-size:10px;letter-spacing:1.5px;font-weight:750;color:#6b5f70;text-transform:uppercase;margin:22px 12px 8px}
+.sidebar .navitem{display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;margin:2px 0;padding:10px 12px;border:0;border-radius:10px;background:transparent;color:#524956;font:inherit;font-size:13px;font-weight:550;text-align:start;text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
+.sidebar .navitem:hover{background:#f6f2f7;color:#1e1822}
+.sidebar .navitem.active{background:#fbf2f6;color:#b00057;font-weight:700;box-shadow:inset 3px 0 0 #d4006a}
+[dir=rtl] .sidebar .navitem.active{box-shadow:inset -3px 0 0 #d4006a}
+.sidebar .navitem .nav-svg{flex:0 0 18px;width:18px;height:18px;opacity:.85}
+.sidebar .navitem.active .nav-svg{opacity:1}
+.sidebar .navitem.locked-nav{color:#8a7f8e;cursor:not-allowed}
+.sidebar .navitem.locked-nav:hover{background:transparent;color:#8a7f8e}
+.sidebar .navitem.locked-nav .nav-lock{margin-inline-start:auto;width:14px;height:14px;opacity:.7}
+.sidebar .sidebottom{margin-top:auto;padding-top:20px;border-top:1px solid #f0eaf1}
+.sidebar .sidebottom form{margin:0}
+.sidebar .sign-out-btn{margin-top:2px;padding:10px 12px;border-top:0;border-radius:10px;font-size:13px;font-weight:600;color:#9b164b}
+.sidebar .sign-out-btn:hover{background:#fff0f3;color:#9b164b}
+.sidebar .navitem:focus-visible{outline:3px solid #7cb518;outline-offset:2px}
+</style>

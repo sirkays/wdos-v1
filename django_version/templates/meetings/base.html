@@ -1,0 +1,41 @@
+{% load static %}<!doctype html>
+<html lang="{{ lang }}" dir="{{ direction }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Meetings{% endblock %} — WDOS</title>
+  <link rel="stylesheet" href="{% static 'accounts/design.css' %}">
+  <link rel="stylesheet" href="{% static 'accounts/refinements.css' %}">
+  <link rel="stylesheet" href="{% static 'accounts/onboarding.css' %}">
+  {% include '_tailwind.html' %}
+  <style>
+    .ws-list{list-style:none;margin:0;padding:0}.ws-list li{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #f0e9f2;font-size:13px}
+    .ws-list a{color:inherit;text-decoration:none}.ws-empty{color:#524956;font-size:13px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .mt{margin-top:20px}.chip{display:inline-block;padding:2px 10px;border-radius:99px;background:#fff0f6;color:#d4006a;font-size:12px;font-weight:600}.chip.grey{background:#f3eff5;color:#544758}
+    .mform .field{margin-bottom:14px}.mform label{display:block;font-weight:600;font-size:13px;margin-bottom:6px}.mform input,.mform select,.mform textarea,.minutes{width:100%;padding:10px;border:1px solid #dfd9e2;border-radius:8px;font:inherit;box-sizing:border-box}
+    .mform input[type=checkbox]{width:auto;position:static;opacity:1}.sheet label{display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px}.sheet input{position:static;opacity:1;width:auto}
+    .agenda{white-space:pre-wrap;font-size:14px;line-height:1.6}
+    .breadcrumb{font-size:13px;color:#6b5f70;display:flex;gap:8px;align-items:center}
+    .breadcrumb a,.breadcrumb .bc-link{color:#6b5f70;text-decoration:none;font-weight:600;transition:color .15s ease}
+    .breadcrumb a:hover,.breadcrumb .bc-link:hover{color:#d4006a;text-decoration:underline}
+    .breadcrumb .bc-sep,.breadcrumb span.sep{color:#bfaec2;font-size:12px;user-select:none}
+    .breadcrumb .bc-current,.breadcrumb span.current{color:#19131a;font-weight:700}
+  </style>
+  {% include 'onboarding/_sidebar_css.html' %}
+</head>
+<body class="bg-[#faf8fb] text-slate-900 antialiased">
+  {% include 'onboarding/_sidebar.html' with tab='meetings' locked=False %}
+  <main class="main">
+    <div class="topbar">
+      <div class="breadcrumb">
+        <a href="{% url 'onboarding:dashboard' %}" class="bc-link">Workspace</a>
+        <span class="bc-sep">/</span>
+        {% block crumb_section %}<a href="{% url 'meetings:list' %}" class="bc-link">Meetings</a>{% endblock %}
+        {% block crumb %}{% endblock %}
+      </div>
+    </div>
+    <div class="content">{% if messages %}{% for msg in messages %}<div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800" role="status">{{ msg }}</div>{% endfor %}{% endif %}{% block body %}{% endblock %}</div>
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

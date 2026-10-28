@@ -1,0 +1,421 @@
+{
+ "days": [
+  {
+   "route": "open7",
+   "day": 1,
+   "title": "Welcome, Profile & Activation Readiness",
+   "purpose": "Confirm the candidate's identity/profile, volunteer data and the exact opportunity being considered before substantive learning begins.",
+   "instruction": "Welcome. Please confirm that the information below is correct and complete any missing required fields. Your information will be used throughout this activation, so you should not need to enter it again.",
+   "content": [],
+   "notice": "This is a volunteer leadership consideration process and not an employment offer or appointment.",
+   "acks": [
+    "I confirm that the profile and volunteer information shown is accurate to the best of my knowledge.",
+    "I understand that beginning activation does not mean I have been selected or appointed."
+   ],
+   "questions": [
+    {
+     "key": "motivation",
+     "label": "Service motivation: why do you want to serve?"
+    },
+    {
+     "key": "experience",
+     "label": "Relevant experience and strengths."
+    },
+    {
+     "key": "availability",
+     "label": "Your availability (days and hours you can give each week)."
+    },
+    {
+     "key": "digital",
+     "label": "Digital readiness: which devices and connections you can use."
+    }
+   ],
+   "needs_profile": true,
+   "has_assessment": false
+  },
+  {
+   "route": "open7",
+   "day": 2,
+   "title": "Understanding WODDI",
+   "purpose": "Give the candidate a clear understanding of WODDI, the ecosystem and the service orientation behind volunteer leadership.",
+   "instruction": "Review the approved WODDI overview. Focus on who WODDI is, what it seeks to nurture and strengthen, how WGMN and WNNN sit within the WODDI ecosystem, and what responsible volunteer leadership means.",
+   "content": [
+    {
+     "doc": "/content/leadership-manual.html",
+     "sections": [
+      "1. Welcome",
+      "2. About WODDI",
+      "3. The WODDI Programme Family"
+     ]
+    }
+   ],
+   "notice": "Leadership is responsibility and service, not status or personal entitlement.",
+   "acks": [],
+   "questions": [
+    {
+     "key": "nurture",
+     "label": "In your own words, what does WODDI seek to nurture or strengthen through its work?"
+    }
+   ],
+   "needs_profile": false,
+   "has_assessment": false
+  },
+  {
+   "route": "open7",
+   "day": 3,
+   "title": "Understanding Your Network",
+   "purpose": "Ensure the candidate understands the selected network and how it operates within WODDI.",
+   "instruction": "Review the approved profile of your selected network. Pay attention to its purpose, vision/mission or approved foundations, leadership structure, participation model and how it delivers its work.",
+   "content": [
+    {
+     "doc": "/content/leadership-manual.html",
+     "sections": [
+      "4. The Two Networks You May Lead",
+      "5. How Our Leadership Is Organised"
+     ]
+    }
+   ],
+   "notice": "",
+   "acks": [
+    "I understand my network choice and where it sits within WODDI."
+   ],
+   "questions": [
+    {
+     "key": "network_purpose",
+     "label": "What is the main purpose of the network you have chosen, in your own words?"
+    }
+   ],
+   "needs_profile": false,
+   "has_assessment": false
+  },
+  {
+   "route": "open7",
+   "day": 4,
+   "title": "Your Proposed Role & Leadership Pack",
+   "purpose": "Make the candidate understand the exact role, reporting line, responsibilities, authority limits and expected outputs before proceeding.",
+   "instruction": "Review the Candidate Edition of the Volunteer Leadership Pack for the exact position you are being considered for.",
+   "content": [
+    {
+     "doc": "/content/leadership-manual.html",
+     "sections": [
+      "6. The Leadership Roles Explained",
+      "7. What Is Expected of a WODDI Leader"
+     ],
+     "pack": 1
+    }
+   ],
+   "notice": "Access to this pack is for assessment. It does not constitute appointment.",
+   "acks": [],
+   "questions": [
+    {
+     "key": "role_report",
+     "label": "State the leadership position you are being considered for and who you would report to."
+    },
+    {
+     "key": "three_resp",
+     "label": "What are the three most important responsibilities of this role?"
+    }
+   ],
+   "needs_profile": false,
+   "has_assessment": false
+  },
+  {
+   "route": "open7",
+   "day": 5,
+   "title": "Conduct, Boundaries, Safeguarding & Confidentiality",
+   "purpose": "Confirm understanding of the standards that protect WODDI, volunteers, members and communities.",
+   "instruction": "Review the approved conduct and boundary requirements. These rules apply to every volunteer leader regardless of level.",
+   "content": [
+    {
+     "doc": "/content/code-of-conduct.html",
+     "sections": []
+    },
+    {
+     "doc": "/content/volunteer-agreement.html",
+     "sections": []
+    }
+   ],
+   "notice": "",
+   "acks": [
+    "I accept and understand the Code of Conduct.",
+    "I understand the safeguarding and complaints reporting route.",
+    "I understand the confidentiality requirements.",
+    "I understand the financial conduct rules: no unauthorised expenditure, fees, levies, collections or financial commitments.",
+    "I understand my role boundaries and will seek guidance or escalate when required."
+   ],
+   "questions": [
+    {
+     "key": "scenario_fees",
+     "label": "What would you do if you were asked to collect an unauthorised contribution or make a commitment outside your role?"
+    }
+   ],
+   "needs_profile": false,
+   "has_assessment": false
+  },
+  {
+   "route": "open7",
+   "day": 6,
+   "title": "WDOS, Reporting, Evidence & Practical Service Readiness",
+   "purpose": "Check whether the candidate understands the practical discipline of a primarily virtual volunteer role and can translate the role into realistic action.",
+   "instruction": "Review how WDOS will support your leadership work and then complete the short practical readiness exercise.",
+   "content": [
+    {
+     "doc": "/content/leadership-manual.html",
+     "sections": [
+      "7. What Is Expected of a WODDI Leader",
+      "8. The Fourteen-Day Activation Ahead"
+     ]
+    }
+   ],
+   "notice": "",
+   "acks": [
+    "I am willing to use WDOS consistently for approved leadership work, reporting, evidence and follow-through."
+   ],
+   "questions": [
+    {
+     "key": "organise",
+     "label": "How would you organise your time and relationships to serve effectively in this primarily virtual role?"
+    },
+    {
+     "key": "plan_priority",
+     "label": "Practical work sample (a): one priority you would address in your proposed area."
+    },
+    {
+     "key": "plan_people",
+     "label": "Practical work sample (b): who you would need to work with."
+    },
+    {
+     "key": "plan_actions",
+     "label": "Practical work sample (c): the first three actions you would take."
+    },
+    {
+     "key": "plan_evidence",
+     "label": "Practical work sample (d): how you would report progress and evidence through WDOS."
+    }
+   ],
+   "needs_profile": false,
+   "has_assessment": false
+  },
+  {
+   "route": "open7",
+   "day": 7,
+   "title": "Final Reflection & Leadership Understanding / Readiness Assessment",
+   "purpose": "Close activation, obtain the final pack acknowledgement and move the candidate into the standard readiness assessment without re-entering data.",
+   "instruction": "Review your activation summary. Confirm the Volunteer Pack acknowledgement and complete the Leadership Understanding & Readiness Assessment.",
+   "content": [],
+   "notice": "Access to this pack is for assessment. It does not constitute appointment.",
+   "acks": [
+    "I confirm that I have reviewed the WODDI Volunteer Pack and understand the volunteer nature of the role, my responsibilities and boundaries, WDOS requirements, reporting expectations and the conduct standards."
+   ],
+   "questions": [],
+   "needs_profile": false,
+   "has_assessment": true
+  },
+  {
+   "route": "ref3",
+   "day": 1,
+   "title": "WODDI, Your Network & the Role Being Considered",
+   "purpose": "Give the referred candidate the essential WODDI/network/role understanding and confirm the exact seat/role under consideration.",
+   "instruction": "Review who WODDI is, your proposed network, the approved leadership structure and the exact role for which you have been referred.",
+   "content": [
+    {
+     "doc": "/content/leadership-manual.html",
+     "sections": [
+      "1. Welcome",
+      "2. About WODDI",
+      "4. The Two Networks You May Lead",
+      "5. How Our Leadership Is Organised",
+      "6. The Leadership Roles Explained"
+     ]
+    }
+   ],
+   "notice": "This is a volunteer leadership consideration process. Referral and activation do not constitute appointment.",
+   "acks": [
+    "I confirm that the profile and volunteer information shown is accurate to the best of my knowledge."
+   ],
+   "questions": [
+    {
+     "key": "attract",
+     "label": "What attracts you to serving in this role?"
+    },
+    {
+     "key": "role_report",
+     "label": "State the proposed role and who you would report to."
+    }
+   ],
+   "needs_profile": true,
+   "has_assessment": false
+  },
+  {
+   "route": "ref3",
+   "day": 2,
+   "title": "Leadership Review Pack, Standards & Boundaries",
+   "purpose": "Ensure the candidate understands the same critical conduct, authority and operating rules required of open-call candidates.",
+   "instruction": "Review the Candidate Edition of the Leadership/Volunteer Pack for the exact position, including the mandatory conduct and operational standards.",
+   "content": [
+    {
+     "doc": "/content/leadership-manual.html",
+     "sections": [
+      "6. The Leadership Roles Explained",
+      "7. What Is Expected of a WODDI Leader"
+     ],
+     "pack": 1
+    },
+    {
+     "doc": "/content/code-of-conduct.html",
+     "sections": []
+    },
+    {
+     "doc": "/content/volunteer-agreement.html",
+     "sections": []
+    }
+   ],
+   "notice": "Access to this pack is for assessment. It does not constitute appointment.",
+   "acks": [
+    "I acknowledge the Volunteer Leadership Pack, Candidate Edition, for the position being considered.",
+    "I accept and understand the Code of Conduct.",
+    "I understand the safeguarding and complaints reporting route.",
+    "I understand the confidentiality requirements.",
+    "I understand the financial conduct rules: no unauthorised fees, levies or commitments.",
+    "I understand my authority boundaries."
+   ],
+   "questions": [
+    {
+     "key": "scenario_authority",
+     "label": "How would you respond to a request that is outside your authority?"
+    }
+   ],
+   "needs_profile": false,
+   "has_assessment": false
+  },
+  {
+   "route": "ref3",
+   "day": 3,
+   "title": "Service Readiness & Assessment",
+   "purpose": "Confirm practical readiness and complete the same standard Leadership Understanding & Readiness Assessment used after the 7-Day route.",
+   "instruction": "Review the practical expectations of a primarily virtual volunteer role, confirm your readiness, and complete the assessment.",
+   "content": [
+    {
+     "doc": "/content/leadership-manual.html",
+     "sections": [
+      "7. What Is Expected of a WODDI Leader"
+     ]
+    }
+   ],
+   "notice": "Access to this pack is for assessment. It does not constitute appointment.",
+   "acks": [
+    "I confirm reasonable availability and my willingness to use WDOS for approved work.",
+    "I understand tasks, reporting and evidence, meetings, communication and escalation."
+   ],
+   "questions": [
+    {
+     "key": "organise",
+     "label": "How will you organise your time and relationships to serve responsibly in this primarily virtual role?"
+    }
+   ],
+   "needs_profile": false,
+   "has_assessment": true
+  }
+ ],
+ "questions": [
+  {
+   "seq": 1,
+   "question": "What is WODDI and what does \"The Nurturer\" mean to you in the context of service?",
+   "critical": false
+  },
+  {
+   "seq": 2,
+   "question": "Which WODDI network have you chosen, and why does it align with you?",
+   "critical": false
+  },
+  {
+   "seq": 3,
+   "question": "State your proposed leadership role and who you report to.",
+   "critical": true
+  },
+  {
+   "seq": 4,
+   "question": "Name three responsibilities of your proposed role.",
+   "critical": false
+  },
+  {
+   "seq": 5,
+   "question": "Name two things you are not authorised to do without approval.",
+   "critical": true
+  },
+  {
+   "seq": 6,
+   "question": "What should you do if a task or decision is outside your authority?",
+   "critical": true
+  },
+  {
+   "seq": 7,
+   "question": "Can a volunteer leader impose fees, levies or contributions? Explain.",
+   "critical": true
+  },
+  {
+   "seq": 8,
+   "question": "How will you use WDOS in your role?",
+   "critical": true
+  },
+  {
+   "seq": 9,
+   "question": "What would you do if you became aware of a safeguarding concern?",
+   "critical": true
+  },
+  {
+   "seq": 10,
+   "question": "If a report is returned for correction, what should you do?",
+   "critical": false
+  },
+  {
+   "seq": 11,
+   "question": "How will you work with your Deputy/Assistant or Principal while respecting authority boundaries?",
+   "critical": false
+  },
+  {
+   "seq": 12,
+   "question": "Give one practical example of how you would strengthen participation or follow-through in your geography/community.",
+   "critical": false
+  },
+  {
+   "seq": 13,
+   "question": "Confirm: I have reviewed the Volunteer Pack and understand this is a volunteer role.",
+   "critical": true
+  }
+ ],
+ "messages": {
+  "day_ready": {
+   "title": "Your Day [#] Activation Step Is Ready",
+   "body": "Hello [First Name], today's WODDI activation step is ready. It is designed to help you understand the role and prepare for responsible service."
+  },
+  "incomplete": {
+   "title": "Your Activation Is Still In Progress",
+   "body": "You have not yet completed all required activation steps. Please return to WDOS to continue from where you stopped."
+  },
+  "ext_received": {
+   "title": "Extension Request Received",
+   "body": "We have received your request for additional time to complete activation. You will be notified once it has been reviewed."
+  },
+  "ext_approved": {
+   "title": "Extension Approved",
+   "body": "Your activation deadline has been extended to [New Date]. Please complete all remaining steps by this date."
+  },
+  "ext_declined": {
+   "title": "Extension Not Approved",
+   "body": "We are unable to extend this activation period. Please follow the guidance shown in WDOS for your next available step."
+  },
+  "complete": {
+   "title": "Activation Complete",
+   "body": "Thank you, [First Name]. You have completed the required activation steps. Your next step is the Leadership Understanding & Readiness Assessment."
+  },
+  "submitted": {
+   "title": "Assessment Submitted",
+   "body": "Thank you, [First Name]. Your Leadership Understanding & Readiness Assessment has been received and is now under review. We will update you through WDOS when the review is complete."
+  },
+  "returned": {
+   "title": "A Little More Information Is Needed",
+   "body": "Thank you for completing your assessment. We need you to review one or more responses before your readiness review can be completed. Please read the reviewer comments, make the requested correction and resubmit."
+  }
+ }
+}

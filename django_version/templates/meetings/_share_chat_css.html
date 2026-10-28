@@ -1,0 +1,106 @@
+<style>
+  /* ---------- Tile Video & Avatar Isolation (prevents side-by-side split / black box) ---------- */
+  .tile video {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    z-index: 1;
+  }
+  .tile.is-local video { transform: scaleX(-1); }
+  .tile.has-video .av-wrap { display: none !important; }
+  .tile:not(.has-video) video { display: none !important; }
+  .tile .tile-bar, .tile .tile-wave, .tile .tile-mod-bar { z-index: 3; }
+
+  /* ---------- Screen sharing: presentation area + shrunken camera strip ---------- */
+  .screen-stage { flex: 1 1 0%; min-height: 0; width: 100%; display: flex; gap: 10px; }
+  .screen-stage[hidden] { display: none !important; }
+  .screen-tile {
+    position: relative; flex: 1 1 0%; min-width: 0; min-height: 0; border-radius: 16px; overflow: hidden;
+    background: #05070b; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .screen-tile video { width: 100%; height: 100%; object-fit: contain; background: #05070b; display: block; }
+  .screen-tile:fullscreen { border-radius: 0; border: 0; }
+  .screen-label {
+    position: absolute; left: 12px; bottom: 12px; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 12px; font-weight: 700; color: #fff; background: rgba(15, 18, 24, 0.78); padding: 5px 12px; border-radius: 999px;
+  }
+  .screen-fs {
+    position: absolute; right: 12px; bottom: 12px; width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer;
+    background: rgba(15, 18, 24, 0.78); color: #fff; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .screen-fs:hover { background: rgba(15, 18, 24, 0.95); }
+  .screen-self { text-align: center; color: #e2e8f0; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .screen-self strong { font-size: 15px; color: #fff; }
+  .screen-self span { font-size: 12.5px; color: #94a3b8; }
+  .screen-stop {
+    margin-top: 10px; height: 40px; padding: 0 20px; border-radius: 999px; border: 0; cursor: pointer;
+    background: #ea4335; color: #fff; font-weight: 750; font-size: 13px;
+  }
+  .screen-stop:hover { background: #dc2626; }
+
+  /* While anyone presents: screen on top, camera tiles become a thin strip below it */
+  .meet-stage.has-screen { justify-content: flex-start; align-items: stretch; gap: 10px; }
+  .meet-stage.has-screen .stage-empty { display: none !important; }
+  .meet-stage.has-screen .room-grid {
+    height: 112px !important; min-height: 112px; max-height: 112px; flex: 0 0 112px;
+    grid-template-columns: none !important; grid-template-rows: 1fr !important;
+    grid-auto-flow: column; grid-auto-columns: 168px !important; grid-auto-rows: auto;
+    overflow-x: auto; overflow-y: hidden; justify-content: start !important; gap: 10px;
+    scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  }
+  .meet-stage.has-screen .tile { min-height: 0 !important; border-radius: 12px; }
+  .meet-stage.has-screen .tile .av { width: 44px; height: 44px; font-size: 16px; }
+  .meet-stage.has-screen .tile .nm { font-size: 10.5px; padding: 3px 8px; }
+  .meet-stage.has-screen .tile-lang, .meet-stage.has-screen .tile-mod-bar { display: none; }
+  .meet-stage.has-screen .live-cc-overlay { bottom: 132px; }
+
+  /* Present button in the control pill */
+  .meet-controls .btn#share[hidden] { display: none !important; }
+  .meet-controls .btn#share.on { background: #1d4ed8 !important; border-color: #60a5fa !important; color: #fff !important; }
+  .meet-controls .btn#share:disabled { opacity: 0.45; cursor: not-allowed !important; }
+  @media (max-width: 1120px) { .meet-controls .btn#share .btn-label { display: none; } .meet-controls .btn#share { width: 44px; min-width: 44px; padding: 0 !important; } }
+
+  /* ---------- Chat ---------- */
+  #drawer-pane-chat { padding-bottom: 10px; }
+  .chat-list {
+    flex: 1 1 0%; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 10px;
+    padding: 12px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; background: #12141a;
+    scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  }
+  .chat-list .ws-empty { color: #64748b; text-align: center; padding: 28px 12px; font-size: 13px; margin: 0; }
+  .chat-msg { display: flex; flex-direction: column; align-items: flex-start; max-width: 88%; }
+  .chat-msg.mine { align-self: flex-end; align-items: flex-end; }
+  .chat-meta { display: flex; gap: 8px; align-items: baseline; font-size: 11px; color: #94a3b8; margin-bottom: 3px; }
+  .chat-meta strong { color: #e2e8f0; font-weight: 750; }
+  .chat-bubble {
+    padding: 8px 12px; border-radius: 14px 14px 14px 4px; background: #262b38; color: #f1f5f9;
+    font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .chat-msg.mine .chat-bubble { background: linear-gradient(135deg, #d4006a, #9d174d); color: #fff; border-radius: 14px 14px 4px 14px; }
+  .chat-form { display: flex; gap: 8px; margin-top: 10px; flex-shrink: 0; }
+  .chat-form input {
+    flex: 1; min-width: 0; height: 42px; border-radius: 999px; padding: 0 16px; background: #12141a; color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.14); font-size: 16px; outline: none;
+  }
+  .chat-form input:focus { border-color: #ff80bf; }
+  .chat-form button {
+    width: 42px; height: 42px; border-radius: 50%; border: 0; cursor: pointer; flex-shrink: 0;
+    background: #d4006a; color: #fff; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .chat-form button:hover { background: #b80059; }
+  .chat-count {
+    background: #d4006a; color: #fff; font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 999px; min-width: 18px; text-align: center;
+  }
+  .chat-count[hidden] { display: none !important; }
+  .more-action-card[hidden], .more-notif-dot[hidden] { display: none !important; }
+  .more-notif-dot.chat { top: auto; bottom: 8px; background: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35); }
+  .meet-icon-btn .chat-count { margin-left: 2px; }
+
+  @media (max-width: 900px) {
+    .meet-stage.has-screen .room-grid { height: 92px !important; min-height: 92px; max-height: 92px; flex-basis: 92px; grid-auto-columns: 132px !important; }
+    .meet-stage.has-screen .live-cc-overlay { bottom: 112px; }
+  }
+</style>

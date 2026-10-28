@@ -1,0 +1,57 @@
+{% load static %}
+<style>
+  /* Base reset before Tailwind CDN injects utility styles so directional borders (e.g. border-b) don't inherit browser 3px medium width on other sides */
+  [class*="border"] {
+    border-width: 0;
+    border-style: solid;
+  }
+</style>
+<script src="{% static 'vendor/tailwindcss.js' %}"></script>
+<script>
+  if (window.tailwind) {
+    tailwind.config = {
+      corePlugins: { preflight: false },
+      theme: {
+        extend: {
+          colors: {
+            woddi: {
+              DEFAULT: '#d4006a',
+              50: '#fff0f6',
+              100: '#ffe3ef',
+              200: '#ffc6df',
+              300: '#ff99c5',
+              400: '#ff5ca3',
+              500: '#e60073',
+              600: '#d4006a',
+              700: '#b30059',
+              800: '#910048',
+              900: '#75003a'
+            },
+            nurturer: {
+              DEFAULT: '#7cb518',
+              50: '#f4fce3',
+              600: '#7cb518',
+              700: '#5c8a10'
+            }
+          }
+        }
+      }
+    };
+  }
+</script>
+<style>
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  /* Fix onboarding.css global rule that hid non-.checkbox-control checkboxes, while respecting .sr-only / [hidden] */
+  input[type="checkbox"]:not(.checkbox-control input):not(.sr-only):not([hidden]) {
+    position: static !important;
+    opacity: 1 !important;
+    width: 1.1rem !important;
+    height: 1.1rem !important;
+    accent-color: #d4006a;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+</style>

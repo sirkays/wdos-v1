@@ -1,0 +1,12 @@
+-- ============================================================================
+-- WDOS Migration 159 — "Completed" means the assessment is submitted (Phase 208)
+-- APPLIED DIRECTLY ON THE LIVE DATABASE on 19 Sep 2026 through the Supabase
+-- connector (with 158 and its two follow-ups). Kept here as the record.
+-- Accuracy fix: finishing the Day 3 reading marked the activation completed
+-- before the Understanding & Readiness Assessment was submitted. Now the last
+-- day keeps the activation in progress with the assessment open; only
+-- submit_readiness_v2 marks it completed. Activations already marked
+-- completed without a submitted assessment were put back to in progress.
+-- ============================================================================
+-- (function body identical to the one applied; see the connector log)
+insert into public.schema_migrations (version, name) values (159, 'completed_means_assessed') on conflict (version) do nothing;

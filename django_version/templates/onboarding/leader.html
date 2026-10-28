@@ -1,0 +1,37 @@
+{% load static %}<!doctype html>
+<html lang="{{ lang }}" dir="{{ direction }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Leadership Onboarding — WDOS</title>
+<link rel="stylesheet" href="{% static 'accounts/design.css' %}"><link rel="stylesheet" href="{% static 'accounts/refinements.css' %}"><link rel="stylesheet" href="{% static 'accounts/onboarding.css' %}">
+{% include '_tailwind.html' %}
+<style>
+.ob-bar{flex:1;height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden}.ob-bar span{display:block;height:100%;background:#d4006a}
+.ob-dots{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.ob-dot{width:28px;height:28px;border-radius:50%;border:1px solid #cbd5e1;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#475569}.ob-dot--done{background:#d4006a;border-color:#d4006a;color:#fff}.ob-dot--now{border-color:#d4006a;color:#d4006a;font-weight:700}
+.ob-scroller{height:340px;overflow:auto;border:1px solid #e2e8f0;border-radius:12px;padding:18px;background:#fff;margin:12px 0}
+.ob-hint{color:#475569;font-size:13px;margin:8px 0 12px}.ob-row{display:flex;gap:10px;align-items:center}
+.ob-note{width:100%;min-height:110px;padding:12px 14px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;font-size:14px;line-height:1.5;box-sizing:border-box;resize:vertical;background:#fdfcfd;transition:border-color .15s,box-shadow .15s}.ob-note:focus{outline:0;border-color:#d4006a;box-shadow:0 0 0 3px #d4006a22;background:#fff}.ob-sub{color:#475569;font-size:13px;line-height:1.5;margin:0 0 12px}.ob-label{display:block;font-weight:650;font-size:13px;margin:4px 0 4px;color:#0f172a}
+.ob-list{list-style:none;margin:0;padding:0}.ob-list li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px}.ob-list .done b{color:#d4006a}
+.ob-err{color:#9b164b;font-size:13px;margin-top:8px}
+</style>
+{% include 'onboarding/_sidebar_css.html' %}</head><body class="bg-slate-50 text-slate-900 antialiased">
+{% include 'onboarding/_sidebar.html' with tab='onboarding' locked=current %}
+<main class="main"><div class="topbar"><div class="breadcrumb">Workspace <span> / </span> <span>Onboarding</span></div></div>
+<div class="content">
+<div class="pagehead mb-5"><div><div class="eyebrow text-xs font-extrabold uppercase tracking-wider text-woddi-600">{{ request.user.get_full_name|default:request.user.email }}</div>
+<h1 class="text-2xl font-extrabold text-slate-900 mt-0.5">{% if current %}Leadership onboarding{% else %}Onboarding complete{% endif %}</h1>
+<p class="text-sm text-slate-600 mt-1">{% if current %}One step at a time. Read each document to the end before you continue.{% else %}Every required step is finished. Your workspace is open.{% endif %}</p></div></div>
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div class="ob-row"><div class="ob-bar"><span style="width:{{ percent }}%"></span></div><b>{{ done }}/{{ total }}</b></div>
+<div class="ob-dots">{% for s in steps %}<span class="ob-dot{% if s.done_at %} ob-dot--done{% elif s.code == current.code %} ob-dot--now{% endif %}" title="{{ forloop.counter }}. {{ s.title }}">{% if s.done_at %}✓{% else %}{{ forloop.counter }}{% endif %}</span>{% endfor %}</div></section>
+{% if current %}
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="margin-top:20px" id="step" data-code="{{ current.code }}" data-mode="{{ current.mode }}" data-min="{{ current.min_seconds }}" data-doc="{% if current.doc %}{% url 'onboarding:doc' current.code %}{% endif %}" data-complete="{% url 'onboarding:complete' current.code %}">
+<div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">Step {{ n }} of {{ total }} — {{ current.title }}</h2></div>
+{% if current.detail and current.mode != 'declare' %}<p class="ob-sub">{{ current.detail }}</p>{% endif %}
+{% if current.mode == 'read' %}<div class="ob-scroller" id="scroller"><article id="doc">Loading document…</article></div>
+{% elif current.mode == 'declare' %}<label class="ob-label" for="note">Your declaration</label><p class="ob-sub">State any conflict of interest, or write "none" if you have none.</p><textarea class="ob-note" id="note" placeholder="e.g. None, or describe the conflict…"></textarea>
+{% else %}<p>Review this part of WDOS, then confirm. The page opens in a later phase; confirm once you have understood it.</p><button type="button" class="btn" id="opened">I have opened it</button>{% endif %}
+<div class="ob-hint" id="hint"></div><div class="ob-row"><button type="button" class="btn primary" id="next" disabled>Next</button></div><div class="ob-err" id="err"></div>
+{% csrf_token %}</section>{% else %}
+<section class="state-card rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="margin-top:20px"><h2>You're all set</h2><p>Thank you for completing onboarding.</p><a class="btn primary" href="{% url 'onboarding:dashboard' %}">Go to my dashboard</a></section>{% endif %}
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="margin-top:20px"><div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">My onboarding record</h2></div>
+<ul class="ob-list">{% for s in steps %}<li class="{% if s.done_at %}done{% endif %}"><span><b>{{ s.title }}</b></span><small>{% if s.done_at %}{{ s.done_at|date:"j M Y" }}{% else %}Not yet{% endif %}</small></li>{% endfor %}</ul></section>
+</div></main>
+<script src="{% static 'onboarding/leader.js' %}" defer></script></body></html>

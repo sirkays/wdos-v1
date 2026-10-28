@@ -1,0 +1,24 @@
+{% load static %}<!doctype html>
+<html lang="{{ lang }}" dir="{{ direction }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Join meeting{% endblock %} — WDOS</title>
+<link rel="stylesheet" href="{% static 'accounts/design.css' %}"><link rel="stylesheet" href="{% static 'accounts/refinements.css' %}"><link rel="stylesheet" href="{% static 'accounts/onboarding.css' %}">
+{% include '_tailwind.html' %}
+<style>
+body{background:#f8fafc}
+.gwrap{max-width:560px;margin:0 auto;padding:32px 16px}.gwrap.wide{max-width:1100px}
+.gbrand{text-align:center;margin-bottom:20px}.gbrand img{height:56px;display:inline-block}
+.gcard{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(15,23,42,.04)}
+.gcard h1{font-size:22px;margin:0 0 6px}.gcard p{color:#475569;font-size:14px;line-height:1.5}
+.gfield{margin:16px 0}.gfield label{display:block;font-weight:600;font-size:13px;margin-bottom:6px;color:#1e293b}
+.gfield input,.gfield select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;box-sizing:border-box}
+.gerr{color:#9b164b;font-size:13px;margin-top:10px}.gnote{font-size:12px;color:#64748b;margin-top:14px}
+.ws-empty{color:#64748b;font-size:13px}.mt{margin-top:20px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;color:#1e293b;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;transition:all .15s}
+.btn:hover{border-color:#d4006a;color:#d4006a}
+.btn.primary{background:linear-gradient(135deg,#d4006a 0%,#a80054 100%);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(212,0,106,.22)}
+.panel{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:22px;box-shadow:0 2px 12px rgba(15,23,42,.03)}
+.panelhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.panelhead h2{margin:0;font-size:16px;font-weight:800;color:#0f172a}
+</style>{% block head %}{% endblock %}</head><body class="bg-slate-50 text-slate-900 antialiased">
+<div class="gwrap{% block wrapclass %}{% endblock %}"><div class="gbrand"><img src="{% static 'accounts/assets/woddi-logo.png' %}" alt="WODDI"></div>
+{% block body %}{% endblock %}</div>{% block scripts %}{% endblock %}</body></html>

@@ -1,0 +1,66 @@
+# Render Blueprint: one click deploys the web app, the interpreter (translation) worker and the Postgres database.
+# See DEPLOY_RENDER.md. Video itself runs on LiveKit Cloud (Render has no UDP, so it cannot host a media server).
+#
+# BEFORE you apply this blueprint: Render dashboard > Env Groups > New, name it "wdos-secrets" and add
+#   LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET,
+#   AZURE_SPEECH_KEY, AZURE_SPEECH_REGION, AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_REGION
+#   (optional: AZURE_SPEECH_KEY_2, AZURE_TRANSLATOR_KEY_2)
+# Both services read the group, so you enter the secrets once.
+
+services:
+  # ---- Website + API (Django) -------------------------------------------------------------------------------------
+  - type: web
+    name: wdos-web
+    runtime: python
+    region: frankfurt            # closest Render region to West/East/Southern Africa
+    plan: standard               # 1 CPU / 2 GB. Move to "pro" if a 1000-person join storm feels slow.
+    rootDir: django_version
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    preDeployCommand: python manage.py migrate --noinput
+    startCommand: gunicorn wdos_project.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --threads 8 --worker-class gthread --timeout 60 --access-logfile -
+    healthCheckPath: /accounts/login/
+    disk:                        # private meeting files; the default disk is wiped on every deploy
+      name: wdos-media
+      mountPath: /var/data
+      sizeGB: 5
+    envVars:
+      - fromGroup: wdos-secrets
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: MEDIA_ROOT
+        value: /var/data/media
+      - key: DATABASE_URL
+        fromDatabase:
+          name: wdos-db
+          property: connectionString
+
+  # ---- Interpreter bot: live captions + spoken translation (LiveKit + Azure) --------------------------------------
+  - type: worker
+    name: wdos-interpreter
+    runtime: python
+    region: frankfurt
+    plan: standard               # one Python process; "pro" if many people speak at the same time
+    rootDir: django_version
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py run_translation_agent
+    envVars:
+      - fromGroup: wdos-secrets
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: wdos-db
+          property: connectionString
+
+databases:
+  - name: wdos-db
+    databaseName: wdos
+    user: wdos
+    region: frankfurt
+    plan: basic-1gb              # persistent Postgres with backups (the free plan is time-limited, not for production)

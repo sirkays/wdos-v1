@@ -1,0 +1,170 @@
+<section class="panel {% if not room %}rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm{% else %}room-guest-panel{% endif %}" id="guestpanel" data-json="{% url 'meetings:guests' m.pk %}" data-room="{{ room|yesno:'1,0' }}">
+  <div class="panelhead flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100">
+    <div class="flex items-center gap-2.5 flex-wrap">
+      <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-woddi-50 text-woddi-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </span>
+      <div>
+        <h2 class="text-base font-extrabold text-slate-900 leading-tight">Room Security, Passcode &amp; Guest Access</h2>
+        {% if not room %}<p class="text-xs text-slate-500 mt-0.5">Control who can enter the WODDI Room and manage room passcode protection.</p>{% endif %}
+      </div>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      {% if m.passcode %}
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-800">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Passcode Required
+      </span>
+      {% endif %}
+      {% if m.access == 'anyone' %}
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Anyone with the link
+      </span>
+      {% else %}
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+        WDOS accounts only
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if not room %}
+  <!-- Room Passcode Card (Detail Page) -->
+  <div class="rounded-xl border {% if m.passcode %}border-amber-200/80 bg-amber-50/40{% else %}border-slate-200 bg-slate-50/60{% endif %} p-4 mb-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-800">Room Passcode Protection</h3>
+          {% if m.passcode %}
+          <span class="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">Active</span>
+          {% else %}
+          <span class="rounded-md bg-slate-200/70 px-2 py-0.5 text-[11px] font-semibold text-slate-600">Off</span>
+          {% endif %}
+        </div>
+        <p class="text-xs text-slate-600 mt-1">
+          {% if m.passcode %}
+          Participants and guests must enter this passcode before joining the room. Hosts bypass it automatically.
+          {% else %}
+          Require participants and guests to enter a passcode before they can join this meeting room.
+          {% endif %}
+        </p>
+      </div>
+
+      {% if not m.passcode %}
+      <form method="post" action="{% url 'meetings:guest_link' m.pk %}" class="flex flex-wrap items-center gap-2">
+        {% csrf_token %}
+        <input type="text" name="passcode" maxlength="32" placeholder="Custom code (optional)" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono text-slate-800 focus:border-woddi-600 focus:outline-none w-44">
+        <button class="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-slate-800 transition" name="action" value="passcode_on" type="submit">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Require passcode
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if m.passcode %}
+    <div class="mt-3.5 pt-3.5 border-t border-amber-200/60 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-3.5 py-2 shadow-2xs">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Passcode</span>
+          <code id="room-passcode" class="text-sm font-extrabold font-mono tracking-widest text-slate-900 select-all">{{ m.passcode }}</code>
+        </div>
+        <button type="button" id="pcopy" data-passcode="{{ m.passcode }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Copy passcode</span>
+        </button>
+      </div>
+
+      <form method="post" action="{% url 'meetings:guest_link' m.pk %}" class="flex flex-wrap items-center gap-2">
+        {% csrf_token %}
+        <input type="text" name="passcode" value="{{ m.passcode }}" maxlength="32" aria-label="Custom room passcode" placeholder="Custom code" class="w-32 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-800 focus:border-woddi-600 focus:outline-none">
+        <button class="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition" name="action" value="passcode_set" type="submit">Update</button>
+        <button class="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition" name="action" value="passcode_regen" type="submit">New random</button>
+        <button class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 transition" name="action" value="passcode_off" type="submit">Turn off passcode</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if m.access == 'anyone' %}
+  {% if not room %}<p class="ws-empty text-xs text-slate-600 mb-2.5">Anyone with this link can join. Share it only with people you want in the meeting.</p>{% endif %}
+  <div class="row flex flex-wrap items-center gap-2">
+    <input id="glink" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'meetings:guest_join' m.guest_code %}" class="flex-1 min-w-[200px] rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs font-mono text-slate-800 focus:outline-none">
+    <button class="btn primary rounded-xl px-4 py-2.5 text-xs font-bold" type="button" id="gcopy">Copy link</button>
+  </div>
+  {% if not room %}
+  <form method="post" action="{% url 'meetings:guest_link' m.pk %}" class="row mt flex flex-wrap gap-2 mt-3">
+    {% csrf_token %}
+    <button class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition" name="action" value="regen" type="submit">New link (old one stops working)</button>
+    <button class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition" name="action" value="{% if m.guest_auto_admit %}auto_off{% else %}auto_on{% endif %}" type="submit">{% if m.guest_auto_admit %}Require my approval (Waiting Room){% else %}Let guests in automatically{% endif %}</button>
+    <button class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 transition" name="action" value="off" type="submit">Turn off guest access</button>
+  </form>
+  {% endif %}
+  {% if room %}
+  <div class="grid grid-cols-1 gap-4 mt-4">
+    <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+      <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-2">Waiting to be admitted</h3>
+      <ul class="ws-list" id="gwait"><li class="ws-empty">Nobody is waiting.</li></ul>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+      <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-2">Guests in the meeting</h3>
+      <ul class="ws-list" id="gin"><li class="ws-empty">No guests yet.</li></ul>
+    </div>
+  </div>
+  {% endif %}
+  {% csrf_token %}
+  {% else %}
+  <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+    <p class="ws-empty text-xs text-slate-600 m-0">This meeting is currently restricted to signed-in WDOS accounts only.</p>
+    {% if not room %}
+    <form method="post" action="{% url 'meetings:guest_link' m.pk %}">
+      {% csrf_token %}
+      <button class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-100 transition shadow-2xs" name="action" value="on" type="submit">Allow guests with a link</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+<script>
+(function(){
+  var pcopy = document.getElementById('pcopy');
+  if (pcopy) {
+    pcopy.addEventListener('click', function () {
+      var code = pcopy.getAttribute('data-passcode') || '';
+      if (navigator.clipboard && code) navigator.clipboard.writeText(code);
+      var sp = pcopy.querySelector('span');
+      if (sp) { sp.textContent = 'Copied!'; setTimeout(function(){ sp.textContent = 'Copy passcode'; }, 2000); }
+    });
+  }
+})();
+</script>
+{% if m.access == 'anyone' %}<script>
+(function(){var p=document.getElementById('guestpanel'),W=document.getElementById('gwait'),I=document.getElementById('gin'),
+csrf=p.querySelector('[name=csrfmiddlewaretoken]').value,base=p.dataset.json;
+var c=document.getElementById('gcopy');if(c)c.addEventListener('click',function(){var i=document.getElementById('glink');i.select();navigator.clipboard&&navigator.clipboard.writeText(i.value);c.textContent='Copied!';setTimeout(function(){c.textContent='Copy link'},2000)});
+if(!W||!I)return;
+function row(g,btns){var li=document.createElement('li'),s=document.createElement('span');s.className='font-semibold text-sm text-slate-800';s.textContent=g.name+(g.lang?' ('+g.lang.toUpperCase()+')':'');li.appendChild(s);
+ var d=document.createElement('span');btns.forEach(function(b){var e=document.createElement('button');e.className='btn'+(b[1]==='admit'?' primary':'');e.type='button';e.textContent=b[0];e.onclick=function(){act(g.id,b[1])};d.appendChild(e);d.appendChild(document.createTextNode(' '))});li.appendChild(d);return li}
+function act(id,a){var fd=new FormData();fd.append('csrfmiddlewaretoken',csrf);fetch(base+id+'/'+a+'/',{method:'POST',body:fd,credentials:'same-origin',headers:{'x-requested-with':'fetch'}}).then(poll)}
+function fill(ul,items,btns,empty){ul.innerHTML='';if(!items.length){ul.innerHTML='<li class="ws-empty">'+empty+'</li>';return}items.forEach(function(g){ul.appendChild(row(g,btns))})}
+var reviewed={},lastWaiting=[];
+function isPeopleTabOpen(){var dr=document.getElementById('meet-drawer'),pp=document.getElementById('drawer-pane-people');return !!(dr&&!dr.classList.contains('collapsed')&&pp&&!pp.hidden)}
+function markReviewed(){lastWaiting.forEach(function(g){reviewed[g.id]=true});var wt=document.getElementById('waiting-toast');if(wt)wt.hidden=true}
+function poll(){fetch(base,{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){
+ lastWaiting=d.waiting||[];
+ fill(W,lastWaiting,[['Admit','admit'],['Remove','remove']],'Nobody is waiting.');fill(I,d.in,[['Remove','remove']],'No guests yet.');
+ var wb=document.getElementById('waiting-badge'),wt=document.getElementById('waiting-toast'),wtn=document.getElementById('waiting-toast-name');
+ if(wb){wb.textContent=lastWaiting.length;wb.hidden=!lastWaiting.length}
+ if(isPeopleTabOpen()){markReviewed()}
+ else if(wt){
+  var unreviewed=lastWaiting.filter(function(g){return !reviewed[g.id]});
+  wt.hidden=!unreviewed.length;
+  if(wtn&&unreviewed.length){wtn.textContent=unreviewed[0].name+(unreviewed.length>1?' +'+(unreviewed.length-1)+' more':'')}
+ }
+}).catch(function(){})}
+poll();
+document.addEventListener('wdos:lobby',poll);
+document.addEventListener('wdos:lobby-reviewed',markReviewed);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)poll()})})();
+</script>{% endif %}

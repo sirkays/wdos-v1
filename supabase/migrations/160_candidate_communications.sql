@@ -1,0 +1,14 @@
+-- ============================================================================
+-- WDOS Migration 160 — Candidate communications wired, referral source
+-- captured, communication log (Phase 209).
+-- APPLIED DIRECTLY ON THE LIVE DATABASE on 19 Sep 2026 through the Supabase
+-- connector (160 and 160b). Do NOT paste into the SQL Editor.
+-- Kept as the record: candidate_messages (15 approved moments),
+-- candidate_notify(), triggers on sign-up / assessment / outcomes /
+-- extensions / day-ready, candidate_reminder_sweep() on pg_cron every 6 h,
+-- candidate_comms_log, hq_candidate_comms(), referrer_name and
+-- referrer_category on the form and in the master dashboard.
+-- Mailer: the existing send_email() (Brevo via pg_net), verified live:
+-- HTTP 201 from Brevo for the welcome message to the first test candidate.
+-- ============================================================================
+insert into public.schema_migrations (version, name) values (160, 'candidate_communications') on conflict (version) do nothing;

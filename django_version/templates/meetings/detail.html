@@ -1,0 +1,312 @@
+{% extends 'meetings/base.html' %}
+{% block crumb %} <span class="bc-sep">/</span> <span class="bc-current">{{ m.title }}</span>{% endblock %}
+{% block body %}
+<div class="max-w-6xl mx-auto space-y-6 pb-10">
+
+  <!-- Hero Header Card -->
+  <section class="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-sm">
+    <div class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#d4006a] via-[#9d174d] to-indigo-600"></div>
+
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+      <div class="space-y-2.5 min-w-0">
+        <!-- Badges Row -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-woddi-50 border border-woddi-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-woddi-700">
+            {% if m.access == 'anyone' %}Open Guest Link{% else %}{{ m.org_unit.name }}{% endif %}
+          </span>
+
+          {% if time_elapsed %}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-800">
+            <span class="h-2 w-2 rounded-full bg-amber-500"></span> Time Elapsed
+          </span>
+          {% elif live or m.status == 'in_progress' %}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800">
+            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> {{ m.get_status_display }}
+          </span>
+          {% elif m.status == 'completed' %}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+            {{ m.get_status_display }}
+          </span>
+          {% elif m.status == 'cancelled' %}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-xs font-bold text-rose-700">
+            {{ m.get_status_display }}
+          </span>
+          {% else %}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 border border-sky-200 px-3 py-1 text-xs font-bold text-sky-800">
+            {{ m.get_status_display }}
+          </span>
+          {% endif %}
+
+          <span class="chip">{{ m.get_platform_display }}</span>
+
+          {% if m.access == 'anyone' %}
+          <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">Anyone with the link</span>
+          {% else %}
+          <span class="chip grey">{{ m.get_audience_display }}</span>
+          {% endif %}
+
+          {% if m.passcode %}
+          <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Passcode Protected
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- Title -->
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">{{ m.title }}</h1>
+
+        <!-- Metadata Strip -->
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-slate-600 pt-0.5">
+          <span class="inline-flex items-center gap-1.5 font-medium text-slate-700">
+            <svg class="text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            {{ m.starts_at|date:"D j M Y, H:i" }} – {{ m.ends_at|date:"H:i" }}
+          </span>
+          {% if m.location %}
+          <span class="inline-flex items-center gap-1.5">
+            <svg class="text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/></svg>
+            <span>{{ m.location }}</span>
+          </span>
+          {% endif %}
+          {% if m.organiser %}
+          <span class="inline-flex items-center gap-1.5">
+            <svg class="text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Host: {{ m.organiser.full_name|default:m.organiser.email }}</span>
+          </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Primary Call-to-Action Area -->
+      <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+        {% if m.status != 'completed' and m.status != 'cancelled' %}
+        {% if m.platform == 'woddi' %}
+        <a href="#prejoin-studio" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-3 text-xs font-bold text-slate-700 hover:border-woddi-500 hover:text-woddi-700 transition shadow-2xs">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+          <span>Test Mic &amp; Video</span>
+        </a>
+        {% endif %}
+        <form method="post" action="{% url 'meetings:join' m.pk %}" class="flex flex-wrap items-center gap-2">
+          {% csrf_token %}
+          {% if m.passcode and not passcode_unlocked %}
+          <div class="relative">
+            <input type="password" name="passcode" maxlength="32" required autocomplete="off" placeholder="Enter room passcode" aria-label="Room passcode" class="rounded-xl border border-amber-300 bg-amber-50/40 px-3.5 py-2.5 text-sm font-mono text-slate-900 placeholder:font-sans placeholder:text-slate-400 focus:border-woddi-600 focus:bg-white focus:outline-none w-48">
+          </div>
+          {% endif %}
+          <button class="btn primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold shadow-sm" type="submit">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <span>{% if m.platform == 'woddi' %}Join WODDI Room{% else %}Open meeting link{% endif %}</span>
+          </button>
+        </form>
+        {% endif %}
+        {% if mgr and m.status == 'scheduled' %}
+        <form method="post" action="{% url 'meetings:cancel' m.pk %}">
+          {% csrf_token %}
+          <button class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-xs font-bold text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition" type="submit">Cancel meeting</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Main 2-Column Workspace Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+    <!-- Left Column: Pre-Join Studio, Agenda, Security & Guest Access, Minutes & Transcript -->
+    <div class="lg:col-span-7 xl:col-span-8 space-y-6">
+
+      {% if m.platform == 'woddi' and m.status != 'completed' and m.status != 'cancelled' %}
+      {% include 'meetings/_device_check.html' %}
+      {% endif %}
+
+      {% if m.agenda %}
+      <section class="panel rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+        <div class="panelhead flex items-center gap-2.5 pb-3 mb-3 border-b border-slate-100">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </span>
+          <h2 class="text-base font-extrabold text-slate-900">Agenda &amp; Briefing</h2>
+        </div>
+        <div class="agenda text-sm text-slate-700 leading-relaxed">{{ m.agenda|urlize }}</div>
+      </section>
+      {% endif %}
+
+      {% if mgr %}{% include 'meetings/_guest_panel.html' %}{% endif %}
+
+      {% if m.minutes %}
+      <section class="panel rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+        <div class="panelhead flex items-center gap-2.5 pb-3 mb-3 border-b border-slate-100">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </span>
+          <h2 class="text-base font-extrabold text-slate-900">Published Minutes</h2>
+        </div>
+        <div class="agenda text-sm text-slate-700 leading-relaxed">{{ m.minutes|urlize }}</div>
+      </section>
+      {% endif %}
+
+      {% if mgr and m.status != 'completed' and m.status != 'cancelled' %}
+      <section class="panel rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+        <div class="panelhead flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100">
+          <div class="flex items-center gap-2.5">
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </span>
+            <div>
+              <h2 class="text-base font-extrabold text-slate-900 leading-tight">Close Meeting &amp; Record Minutes</h2>
+              <p class="text-xs text-slate-500 mt-0.5">Review decisions and action items, or generate a draft directly from the live transcript.</p>
+            </div>
+          </div>
+
+          {% if has_transcript %}
+          <div class="flex flex-wrap items-center gap-2">
+            <a class="inline-flex items-center gap-1.5 rounded-xl border {% if draft_active %}border-woddi-300 bg-woddi-50 text-woddi-700{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-50{% endif %} px-3.5 py-2 text-xs font-bold transition shadow-2xs" href="?draft=1">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              Draft minutes from transcript
+            </a>
+            <a class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-2xs" href="{% url 'meetings:transcript' m.pk %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download transcript
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if draft_active %}
+        <div class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-woddi-200 bg-woddi-50/70 px-4 py-2.5 text-xs font-semibold text-woddi-800">
+          <span>Draft minutes populated from the room transcript and check-in list. Review and edit before saving.</span>
+          <a href="{% url 'meetings:detail' m.pk %}" class="text-woddi-700 underline hover:no-underline shrink-0">Reset</a>
+        </div>
+        {% endif %}
+
+        {% if usage %}
+        <div class="mb-4 grid grid-cols-3 gap-2.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-center">
+          <div>
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Speech Recognised</div>
+            <div class="text-sm font-extrabold text-slate-800 mt-0.5">{{ usage.audio_seconds }}s</div>
+          </div>
+          <div class="border-x border-slate-200/80">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Translated Chars</div>
+            <div class="text-sm font-extrabold text-slate-800 mt-0.5">{{ usage.translated_chars }}</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Spoken Chars</div>
+            <div class="text-sm font-extrabold text-slate-800 mt-0.5">{{ usage.spoken_chars }}</div>
+          </div>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'meetings:close' m.pk %}" class="space-y-3">
+          {% csrf_token %}
+          <textarea class="minutes w-full rounded-xl border border-slate-300 bg-slate-50/40 p-3.5 text-sm text-slate-800 leading-relaxed focus:border-woddi-600 focus:bg-white focus:outline-none" name="minutes" rows="7" maxlength="8000" placeholder="Minutes: key decisions, summary, and assigned action items...">{{ minutes_text }}</textarea>
+          <div class="flex justify-end">
+            <button class="btn primary rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm" type="submit">Save minutes and mark completed</button>
+          </div>
+        </form>
+      </section>
+      {% endif %}
+
+    </div>
+
+    <!-- Right Column: Live Check-ins, Attendance Register, Documents -->
+    <div class="lg:col-span-5 xl:col-span-4 space-y-6">
+
+      <!-- Joined / Live Check-ins -->
+      <section class="panel rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+        <div class="panelhead flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-woddi-50 text-woddi-600">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            <h2 class="text-base font-extrabold text-slate-900">Joined</h2>
+          </div>
+          <span id="count" class="inline-flex items-center rounded-full bg-woddi-50 border border-woddi-100 px-2.5 py-0.5 text-xs font-extrabold text-woddi-700">{{ checkins|length }}</span>
+        </div>
+        <ul class="ws-list max-h-64 overflow-y-auto" id="joined">
+          {% for c in checkins %}
+          <li>
+            <span class="font-semibold text-sm text-slate-800">{{ c.profile.full_name }}</span>
+            <small class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{{ c.joined_at|date:"H:i" }}</small>
+          </li>
+          {% empty %}
+          <li class="ws-empty">Nobody has joined yet.</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <!-- Attendance Register -->
+      {% if mgr %}
+      <section class="panel rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+        <div class="panelhead flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </span>
+            <h2 class="text-base font-extrabold text-slate-900">Attendance</h2>
+          </div>
+          {% if sheet %}<span class="text-xs font-semibold text-slate-500">{{ sheet|length }} invitee{{ sheet|length|pluralize }}</span>{% endif %}
+        </div>
+        <form method="post" action="{% url 'meetings:attendance' m.pk %}" class="sheet">
+          {% csrf_token %}
+          <div class="max-h-72 overflow-y-auto divide-y divide-slate-100">
+            {% for r in sheet %}
+            <label class="flex items-center justify-between gap-2 py-2.5 px-2 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-800">
+              <span class="flex items-center gap-2.5 font-medium">
+                <input type="checkbox" name="present" value="{{ r.p.pk }}" {% if r.present %}checked{% endif %} class="h-4 w-4 rounded border-slate-300 text-woddi-600">
+                <span>{{ r.p.full_name }}</span>
+              </span>
+              {% if r.present %}<span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Present</span>{% endif %}
+            </label>
+            {% empty %}
+            <p class="ws-empty py-2">No invitees found for this audience.</p>
+            {% endfor %}
+          </div>
+          {% if sheet %}
+          <div class="w-full pt-3 mt-2 border-t border-slate-100">
+            <button class="btn primary w-full rounded-xl py-2.5 text-xs font-bold" type="submit">Save attendance</button>
+          </div>
+          {% endif %}
+        </form>
+      </section>
+      {% endif %}
+
+      <!-- Documents -->
+      <section class="panel rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+        <div class="panelhead flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </span>
+            <h2 class="text-base font-extrabold text-slate-900">Documents</h2>
+          </div>
+          <span class="text-xs font-bold text-slate-400">{{ files|length }}</span>
+        </div>
+        <ul class="ws-list">
+          {% for f in files %}
+          <li>
+            <a href="{% url 'meetings:download' m.pk f.pk %}" class="font-semibold text-woddi-600 hover:underline truncate">{{ f.name }}</a>
+            <small class="text-xs text-slate-500 shrink-0">{{ f.created_at|date:"j M Y" }}</small>
+          </li>
+          {% empty %}
+          <li class="ws-empty">No documents attached.</li>
+          {% endfor %}
+        </ul>
+        {% if mgr %}
+        <form method="post" action="{% url 'meetings:upload' m.pk %}" enctype="multipart/form-data" class="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
+          {% csrf_token %}
+          <input type="file" name="file" required class="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-slate-700 hover:file:bg-slate-200">
+          <button class="btn w-full rounded-xl py-2 text-xs font-bold" type="submit">Attach document</button>
+        </form>
+        {% endif %}
+      </section>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>
+(function(){var u="{% url 'meetings:live' m.pk %}",box=document.getElementById('joined'),c=document.getElementById('count');
+setInterval(function(){fetch(u,{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){c.textContent=d.count;
+box.innerHTML=d.people.length?d.people.map(function(p){return '<li><span class="font-semibold text-sm text-slate-800"></span><small class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">'+p.at+'</small></li>'}).join(''):'<li class="ws-empty">Nobody has joined yet.</li>';
+box.querySelectorAll('li span').forEach(function(s,i){s.textContent=d.people[i].name})}).catch(function(){})},5000)})();
+</script>{% endblock %}

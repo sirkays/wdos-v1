@@ -1,0 +1,78 @@
+{% extends 'meetings/guest_base.html' %}
+{% load static %}
+{% block body %}
+<div class="gcard rounded-2xl border border-slate-200 bg-white p-7 shadow-sm text-center">
+  <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-woddi-50 text-woddi-600">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  </div>
+  <h1 class="text-xl font-extrabold text-slate-900">{% if early %}The room is not open yet{% else %}Waiting for the host{% endif %}</h1>
+  <p id="msg" class="mt-2 text-sm text-slate-600 leading-relaxed">{% if early %}Hello {{ g.name }}. The room opens 15 minutes before the start ({{ m.starts_at|date:"H:i" }} UTC). This page will let you in automatically.{% else %}Hello {{ g.name }}. The host will let you in shortly. Please keep this page open.{% endif %}</p>
+
+  <div class="mt-6 pt-5 border-t border-slate-100 flex items-center justify-center">
+    <a href="{% url 'meetings:guest_leave' m.guest_code %}?cancelled=1" id="cancel-wait-btn" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400 transition shadow-2xs cursor-pointer">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      <span>Cancel and return</span>
+    </a>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% if not early %}<script src="{% static 'vendor/livekit-client.umd.min.js' %}"></script>{% endif %}
+<script>
+/* No polling. A waiting guest holds one LiveKit connection to a private lobby room and the server pushes
+   'admitted' / 'removed' to it. The status endpoint is read once on load and once after any reconnect. */
+(function () {
+  var statusUrl = "{% url 'meetings:guest_status' m.guest_code %}",
+      roomUrl = "{% url 'meetings:guest_room' m.guest_code %}",
+      lobbyUrl = "{% url 'meetings:guest_lobby_token' m.guest_code %}",
+      early = {{ early|yesno:'true,false' }},
+      opensIn = {{ opens_in|default:0 }},
+      msg = document.getElementById('msg'), lobby = null;
+
+  function apply(status) {
+    if (status === 'admitted') { if (lobby) lobby.disconnect(); location.href = roomUrl; }
+    else if (status === 'removed') {
+      if (lobby) lobby.disconnect();
+      msg.textContent = 'You were not admitted to this meeting.';
+    }
+  }
+  function check() {
+    fetch(statusUrl, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+      .then(function (d) { apply(d.status); }).catch(function () {});
+  }
+
+  if (early) {
+    // Admitted but the room is not open yet: one timer to the opening time, then reload into the room.
+    if (opensIn > 0) setTimeout(function () { location.href = roomUrl; }, Math.min(opensIn, 2147483) * 1000 + 500);
+    return;
+  }
+
+  var L = window.LivekitClient;
+  fetch(lobbyUrl, { credentials: 'same-origin' })
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error); return j; }); })
+    .then(function (t) {
+      lobby = new L.Room();
+      lobby.on(L.RoomEvent.DataReceived, function (payload, p, kind, topic) {
+        if (topic !== 'wdos_lobby_status') return;
+        try { apply(JSON.parse(new TextDecoder().decode(payload)).status); } catch (e) {}
+      }).on(L.RoomEvent.Reconnected, check);
+      return lobby.connect(t.url, t.token);
+    })
+    .then(check)      // covers a decision made before the connection was up
+    .catch(function () {
+      // Video service unreachable: fall back to re-checking whenever the guest comes back to this tab.
+      check();
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+    });
+
+  var cancelBtn = document.getElementById('cancel-wait-btn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function () {
+      if (lobby) {
+        try { lobby.disconnect(); } catch (e) {}
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

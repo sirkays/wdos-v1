@@ -1,0 +1,31 @@
+{% extends 'meetings/guest_base.html' %}
+{% block title %}Meeting Ended — {{ m.title }}{% endblock %}
+{% block body %}
+<div class="gcard rounded-2xl border border-slate-200 bg-white p-7 sm:p-8 shadow-sm text-center">
+  <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full {% if m.status == 'cancelled' %}bg-rose-50 text-rose-600 border border-rose-200{% else %}bg-amber-50 text-amber-600 border border-amber-200{% endif %}">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  </div>
+
+  <div class="inline-flex items-center gap-1.5 rounded-full {% if m.status == 'cancelled' %}bg-rose-50 text-rose-700 border border-rose-200{% else %}bg-amber-50 text-amber-800 border border-amber-200{% endif %} px-3 py-1 text-xs font-bold mb-3">
+    <span class="h-2 w-2 rounded-full {% if m.status == 'cancelled' %}bg-rose-500{% else %}bg-amber-500{% endif %}"></span>
+    {% if m.status == 'cancelled' %}Meeting Cancelled{% elif m.status == 'completed' %}Meeting Completed{% else %}Meeting Time Elapsed{% endif %}
+  </div>
+
+  <h1 class="text-2xl font-extrabold text-slate-900">{{ m.title }}</h1>
+
+  <p class="mt-2 text-sm text-slate-600 leading-relaxed max-w-md mx-auto">
+    {% if m.status == 'cancelled' %}
+      This meeting was cancelled by the host, so the WODDI Room is no longer open.
+    {% elif m.status == 'completed' %}
+      The host has closed this meeting and the WODDI Room has ended.
+    {% else %}
+      The scheduled time for this meeting has elapsed, so the WODDI Room is now closed.
+    {% endif %}
+  </p>
+
+  <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600 inline-flex items-center gap-2">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-400 shrink-0"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>Scheduled: {{ m.starts_at|date:"D j M Y, H:i" }} – {{ m.ends_at|date:"H:i" }} (UTC)</span>
+  </div>
+</div>
+{% endblock %}

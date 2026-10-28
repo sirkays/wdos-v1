@@ -1,0 +1,858 @@
+{% extends 'meetings/base.html' %}
+{% load static %}
+
+{% block title %}Schedule a Meeting — WDOS{% endblock %}
+{% block crumb %} <span class="bc-sep">/</span> <span class="bc-current">Schedule</span>{% endblock %}
+
+{% block body %}
+<style>
+  .sc-wrap {
+    max-width: 820px;
+    margin: 0 auto 48px;
+  }
+  .sc-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #6b5f70;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    margin-bottom: 16px;
+    transition: color 0.15s ease;
+  }
+  .sc-back-link:hover {
+    color: #d4006a;
+  }
+  .sc-card {
+    background: #ffffff;
+    border: 1px solid #e7dce6;
+    border-radius: 20px;
+    padding: 34px 36px;
+    box-shadow: 0 4px 24px rgba(30, 24, 34, 0.04);
+  }
+  @media (max-width: 640px) {
+    .sc-card {
+      padding: 22px 18px;
+      border-radius: 16px;
+    }
+  }
+
+  .sc-header {
+    margin-bottom: 28px;
+    border-bottom: 1px solid #f0e9f2;
+    padding-bottom: 20px;
+  }
+  .sc-header h1 {
+    font-size: 26px;
+    letter-spacing: -0.6px;
+    color: #19131a;
+    margin: 0 0 6px;
+    font-weight: 800;
+  }
+  .sc-header p {
+    color: #5e5061;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .sc-section {
+    margin-bottom: 28px;
+  }
+  .sc-section-title {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #4b3d50;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sc-section-title .step-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff0f6;
+    color: #d4006a;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  /* Format Cards Grid */
+  .sc-format-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 680px) {
+    .sc-format-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .sc-format-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 16px 14px;
+    cursor: pointer;
+    background: #ffffff;
+    transition: all 0.18s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    user-select: none;
+  }
+  .sc-format-card:hover {
+    border-color: #f4c2da;
+    background: #fdfafc;
+  }
+  .sc-format-card.active {
+    border-color: #d4006a;
+    background: #fff5f9;
+    box-shadow: 0 2px 10px rgba(212, 0, 106, 0.08);
+  }
+  .sc-format-card .card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14.5px;
+    font-weight: 750;
+    color: #19131a;
+  }
+  .sc-format-card.active .card-head {
+    color: #d4006a;
+  }
+  .sc-format-card .card-desc {
+    font-size: 12px;
+    color: #6b5f70;
+    line-height: 1.45;
+  }
+  .sc-format-card .check-circle {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    transition: all 0.15s ease;
+  }
+  .sc-format-card.active .check-circle {
+    border-color: #d4006a;
+    background: #d4006a;
+  }
+  .sc-format-card .check-circle svg {
+    display: none;
+    width: 10px;
+    height: 10px;
+    stroke: #ffffff;
+    stroke-width: 3;
+  }
+  .sc-format-card.active .check-circle svg {
+    display: block;
+  }
+
+  /* Platform selector pills */
+  .sc-platform-group {
+    background: #fcfbfc;
+    border: 1px solid #ebdfee;
+    border-radius: 14px;
+    padding: 16px;
+    margin-top: 14px;
+  }
+  .sc-platform-label {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #2b2230;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sc-platform-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .sc-platform-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1.5px solid #dfd9e2;
+    background: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sc-platform-pill:hover {
+    border-color: #f4c2da;
+    background: #fff8fb;
+  }
+  .sc-platform-pill.active {
+    border-color: #d4006a;
+    background: #fff0f6;
+    color: #b00057;
+    font-weight: 750;
+  }
+  .sc-platform-pill .badge-auto {
+    font-size: 10px;
+    font-weight: 800;
+    background: #d4006a;
+    color: #ffffff;
+    padding: 2px 6px;
+    border-radius: 99px;
+    text-transform: uppercase;
+  }
+
+  .sc-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: #fdf5f9;
+    border: 1px solid #f6d4e5;
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: #63173d;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .sc-notice svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* Form Fields */
+  .sc-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 640px) {
+    .sc-grid-2 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .sc-field {
+    margin-bottom: 18px;
+  }
+  .sc-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f1922;
+    margin-bottom: 6px;
+  }
+  .sc-field label span.hint {
+    font-weight: 400;
+    color: #6b5f70;
+    font-size: 12px;
+  }
+  .sc-field input[type="text"],
+  .sc-field input[type="url"],
+  .sc-field input[type="datetime-local"],
+  .sc-field select,
+  .sc-field textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid #dfd9e2;
+    border-radius: 10px;
+    background: #ffffff;
+    font-size: 14px;
+    font-family: inherit;
+    color: #1e1822;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .sc-field input:focus,
+  .sc-field select:focus,
+  .sc-field textarea:focus {
+    outline: none;
+    border-color: #d4006a;
+    box-shadow: 0 0 0 3px rgba(212, 0, 106, 0.12);
+  }
+  .sc-field textarea {
+    resize: vertical;
+    min-height: 90px;
+    line-height: 1.5;
+  }
+
+  .sc-title-input {
+    font-size: 15.5px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Duration quick pills */
+  .sc-duration-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .sc-duration-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #6b5f70;
+  }
+  .sc-duration-btn {
+    border: 1px solid #e2d9e4;
+    background: #faf8fa;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 650;
+    color: #4b3d50;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sc-duration-btn:hover {
+    background: #fff0f6;
+    border-color: #f4c2da;
+    color: #d4006a;
+  }
+  .sc-duration-btn.active {
+    background: #d4006a;
+    border-color: #d4006a;
+    color: #ffffff;
+  }
+
+  /* Agenda outline quick chips */
+  .sc-chips-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .sc-chip-btn {
+    border: 1px dashed #d5c8d7;
+    background: #ffffff;
+    border-radius: 99px;
+    padding: 3px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #6b5f70;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sc-chip-btn:hover {
+    border-color: #d4006a;
+    color: #d4006a;
+    background: #fff5f9;
+  }
+
+  /* Validation & Alerts */
+  .sc-alert-danger {
+    background: #fff0f3;
+    border: 1px solid #f8ccd7;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    color: #9b164b;
+    font-size: 13.5px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .sc-alert-danger ul {
+    margin: 4px 0 0 18px;
+    padding: 0;
+  }
+  .sc-field-error {
+    color: #9b164b;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 5px;
+  }
+
+  /* Action buttons */
+  .sc-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 22px;
+    border-top: 1px solid #f0e9f2;
+  }
+  .sc-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #d4006a;
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 26px;
+    font-size: 14px;
+    font-weight: 750;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(212, 0, 106, 0.25);
+    transition: all 0.15s ease;
+  }
+  .sc-btn-primary:hover {
+    background: #b5005b;
+    box-shadow: 0 4px 14px rgba(212, 0, 106, 0.35);
+    transform: translateY(-1px);
+  }
+  .sc-btn-primary:active {
+    transform: translateY(0);
+  }
+  .sc-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #faf8fa;
+    color: #4b3d50;
+    border: 1px solid #dfd9e2;
+    border-radius: 10px;
+    padding: 11px 20px;
+    font-size: 14px;
+    font-weight: 650;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sc-btn-secondary:hover {
+    background: #f0eaf1;
+    color: #19131a;
+  }
+</style>
+
+<div class="sc-wrap">
+  <a href="{% url 'meetings:list' %}" class="sc-back-link">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Back to Meetings
+  </a>
+
+  <div class="sc-card">
+    <div class="sc-header">
+      <h1>Schedule a meeting</h1>
+      <p>Configure meeting format, date and time, audience reach, and discussion agenda.</p>
+    </div>
+
+    {% if form.non_field_errors %}
+    <div class="sc-alert-danger" role="alert">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>{{ form.non_field_errors }}</div>
+    </div>
+    {% endif %}
+
+    <form method="post" id="meeting-schedule-form">
+      {% csrf_token %}
+
+      <!-- SECTION 1: MEETING FORMAT & CHANNEL -->
+      <div class="sc-section">
+        <div class="sc-section-title">
+          <span class="step-badge">1</span>
+          Meeting Format
+        </div>
+
+        <!-- Hidden input bound to form.mode -->
+        <input type="hidden" name="mode" id="id_mode" value="{{ form.mode.value|default:'virtual' }}">
+
+        <div class="sc-format-grid" id="format-grid">
+          <!-- Virtual Card -->
+          <div class="sc-format-card {% if form.mode.value == 'virtual' or not form.mode.value %}active{% endif %}" data-mode="virtual" onclick="selectMode('virtual', this)">
+            <span class="check-circle"><svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="card-head">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4006a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+              Virtual
+            </div>
+            <div class="card-desc">Live online meeting via WODDI Room with video, audio, and interpretation.</div>
+          </div>
+
+          <!-- In-Person Card -->
+          <div id="in-person-mode-card" class="sc-format-card {% if form.mode.value == 'in_person' %}active{% endif %}" style="{% if form.access.value == 'anyone' %}display:none;{% endif %}" data-mode="in_person" onclick="selectMode('in_person', this)">
+            <span class="check-circle"><svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="card-head">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              In-Person
+            </div>
+            <div class="card-desc">Physical venue gathering at chapter hall or field location.</div>
+          </div>
+
+          <!-- Hybrid Card -->
+          <div class="sc-format-card {% if form.mode.value == 'hybrid' %}active{% endif %}" data-mode="hybrid" onclick="selectMode('hybrid', this)">
+            <span class="check-circle"><svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="card-head">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              Hybrid
+            </div>
+            <div class="card-desc">Physical venue location combined with an online video link.</div>
+          </div>
+        </div>
+        {% if form.mode.errors %}<div class="sc-field-error">{{ form.mode.errors }}</div>{% endif %}
+
+        <!-- Platform Sub-selector (for Virtual and Hybrid) -->
+        <div id="platform-box" class="sc-platform-group" style="display: {% if form.mode.value == 'in_person' %}none{% else %}block{% endif %};">
+          <div class="sc-platform-label">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d4006a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+            Online Video Platform
+          </div>
+
+          <!-- Hidden input bound to form.platform -->
+          <input type="hidden" name="platform" id="id_platform" value="woddi">
+
+          <div class="sc-platform-pills">
+            <div class="sc-platform-pill active" data-platform="woddi" style="cursor: default;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              WODDI Room
+              <span class="badge-auto">Built-in (LiveKit)</span>
+            </div>
+          </div>
+
+          <!-- WODDI Room Notice -->
+          <div id="woddi-room-notice" class="sc-notice" style="display: flex;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4006a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div>
+              <strong>Secure WODDI Room:</strong> An encrypted LiveKit room will be automatically provisioned for this meeting. Attendees can join directly from their dashboard with live attendance and interpretation.
+            </div>
+          </div>
+        </div>
+
+        <!-- Location Field (Venue for In-Person or Hybrid) -->
+        <div id="location-field-wrap" class="sc-field" style="margin-top: 14px; display: {% if form.mode.value == 'in_person' or form.mode.value == 'hybrid' %}block{% else %}none{% endif %};">
+          <label for="id_location" id="location-label">
+            <span id="loc-label-text">Physical Venue / Address *</span>
+            <span class="hint" id="loc-hint-text">— meeting hall, office, or field location</span>
+          </label>
+          <input type="text" name="location" id="id_location" value="{{ form.location.value|default:'' }}" placeholder="e.g. Lagos Chapter Hall, 14 Victoria Island Way">
+          {% if form.location.errors %}<div class="sc-field-error">{{ form.location.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- SECTION 2: BASIC DETAILS & ACCESS -->
+      <div class="sc-section">
+        <div class="sc-section-title">
+          <span class="step-badge">2</span>
+          Meeting Details &amp; Access
+        </div>
+
+        <div class="sc-field">
+          <label for="id_title">Meeting Title *</label>
+          <input type="text" name="title" id="id_title" class="sc-title-input" required minlength="3" maxlength="255" value="{{ form.title.value|default:'' }}" placeholder="e.g. Q4 Executive Leadership & Field Operations Review">
+          {% if form.title.errors %}<div class="sc-field-error">{{ form.title.errors }}</div>{% endif %}
+        </div>
+
+        <!-- Who Can Join Selector -->
+        <div class="sc-field mt-4">
+          <label>Who Can Join *</label>
+          <input type="hidden" name="access" id="id_access" value="{{ form.access.value|default:'members' }}">
+
+          <div class="sc-grid-2" id="access-cards">
+            <!-- Option 1: WDOS Accounts Only -->
+            <div role="button" tabindex="0" data-access="members" onclick="selectAccessMode('members')"
+              class="sc-format-card access-card {% if form.access.value != 'anyone' %}active{% endif %}">
+              <span class="check-circle"><svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <div class="card-head">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4006a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                WDOS Accounts Only
+              </div>
+              <div class="card-desc">Internal meeting restricted to signed-in WDOS members in the selected unit and audience.</div>
+            </div>
+
+            <!-- Option 2: Anyone with the Link -->
+            <div role="button" tabindex="0" data-access="anyone" onclick="selectAccessMode('anyone')"
+              class="sc-format-card access-card {% if form.access.value == 'anyone' %}active{% endif %}">
+              <span class="check-circle"><svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <div class="card-head">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                Anyone with the Link
+              </div>
+              <div class="card-desc">Creates a shareable guest link. External guests and partners can join without a WDOS account.</div>
+            </div>
+          </div>
+          {% if form.access.errors %}<div class="sc-field-error">{{ form.access.errors }}</div>{% endif %}
+        </div>
+
+        <!-- Internal Targeting Row (Shown ONLY for "WDOS Accounts Only") -->
+        <div id="internal-targeting-row" class="sc-grid-2 mt-4" style="{% if form.access.value == 'anyone' %}display:none;{% endif %}">
+          <div class="sc-field">
+            <label for="id_org_unit">Host Organisational Unit *</label>
+            <select name="org_unit" id="id_org_unit">
+              {% for opt in form.org_unit.field.queryset %}
+              <option value="{{ opt.pk }}" {% if form.org_unit.value|stringformat:"s" == opt.pk|stringformat:"s" %}selected{% endif %}>
+                {{ opt.name }} ({{ opt.get_level_display|default:opt.level }})
+              </option>
+              {% endfor %}
+            </select>
+            {% if form.org_unit.errors %}<div class="sc-field-error">{{ form.org_unit.errors }}</div>{% endif %}
+          </div>
+
+          <div class="sc-field">
+            <label for="id_audience">Audience Reach *</label>
+            <select name="audience" id="id_audience">
+              {% for val, label in form.fields.audience.choices %}
+              <option value="{{ val }}" {% if form.audience.value == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            {% if form.audience.errors %}<div class="sc-field-error">{{ form.audience.errors }}</div>{% endif %}
+          </div>
+        </div>
+
+        <!-- Guest / Participant Entry Policy (Available for both WDOS Accounts Only & Anyone with the Link) -->
+        <div id="guest-admit-wrap" class="sc-platform-group mt-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="sc-platform-label" style="margin-bottom:0;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d4006a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+              How should guests enter the meeting?
+            </div>
+            <span id="guest-admit-badge" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {% if form.access.value == 'anyone' %}bg-emerald-100 text-emerald-800{% else %}bg-woddi-50 text-woddi-700{% endif %}">
+              {% if form.access.value == 'anyone' %}Guest Link Enabled{% else %}Entry Policy{% endif %}
+            </span>
+          </div>
+
+          <input type="hidden" name="guest_auto_admit" id="id_guest_auto_admit" value="{% if form.guest_auto_admit.value %}on{% endif %}">
+
+          <div class="sc-grid-2" id="guest-entry-cards">
+            <!-- Waiting Room -->
+            <div role="button" tabindex="0" data-auto="0" onclick="selectGuestEntry(false)"
+              class="sc-format-card guest-entry-card {% if not form.guest_auto_admit.value %}active{% endif %}">
+              <span class="check-circle"><svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <div class="card-head">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d4006a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Waiting Room (Host Approval)
+              </div>
+              <div class="card-desc">Guests wait in a lobby screen until you or a moderator click <b>Admit</b>.</div>
+            </div>
+
+            <!-- Direct Entry -->
+            <div role="button" tabindex="0" data-auto="1" onclick="selectGuestEntry(true)"
+              class="sc-format-card guest-entry-card {% if form.guest_auto_admit.value %}active{% endif %}">
+              <span class="check-circle"><svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <div class="card-head">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Direct Entry (Join Immediately)
+              </div>
+              <div class="card-desc">Anyone holding the link enters the live room straight away without waiting.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 3: DATE & TIME -->
+      <div class="sc-section">
+        <div class="sc-section-title">
+          <span class="step-badge">3</span>
+          Date &amp; Time
+        </div>
+
+        <div class="sc-grid-2">
+          <div class="sc-field">
+            <label for="id_starts_at">Starts At * <span class="hint">(Date &amp; Time)</span></label>
+            <input type="datetime-local" name="starts_at" id="id_starts_at" required value="{{ form.starts_at.value|default:'' }}" onchange="handleStartChange()">
+            {% if form.starts_at.errors %}<div class="sc-field-error">{{ form.starts_at.errors }}</div>{% endif %}
+          </div>
+
+          <div class="sc-field">
+            <label for="id_ends_at">Ends At * <span class="hint">(Date &amp; Time)</span></label>
+            <input type="datetime-local" name="ends_at" id="id_ends_at" required value="{{ form.ends_at.value|default:'' }}">
+            {% if form.ends_at.errors %}<div class="sc-field-error">{{ form.ends_at.errors }}</div>{% endif %}
+          </div>
+        </div>
+
+        <!-- Quick Duration Shortcuts -->
+        <div class="sc-duration-row">
+          <span class="sc-duration-label">Quick Duration:</span>
+          <button type="button" class="sc-duration-btn" onclick="setDurationMinutes(30)">30 mins</button>
+          <button type="button" class="sc-duration-btn" onclick="setDurationMinutes(45)">45 mins</button>
+          <button type="button" class="sc-duration-btn active" onclick="setDurationMinutes(60)">1 hour</button>
+          <button type="button" class="sc-duration-btn" onclick="setDurationMinutes(90)">1.5 hours</button>
+          <button type="button" class="sc-duration-btn" onclick="setDurationMinutes(120)">2 hours</button>
+        </div>
+      </div>
+
+      <!-- SECTION 4: AGENDA & OBJECTIVES -->
+      <div class="sc-section">
+        <div class="sc-section-title">
+          <span class="step-badge">4</span>
+          Agenda &amp; Discussion Points
+        </div>
+
+        <div class="sc-field">
+          <label for="id_agenda">Agenda / Key Topics <span class="hint">(Optional)</span></label>
+          <textarea name="agenda" id="id_agenda" placeholder="Provide background, items to cover, and expected outcomes...">{{ form.agenda.value|default:'' }}</textarea>
+          {% if form.agenda.errors %}<div class="sc-field-error">{{ form.agenda.errors }}</div>{% endif %}
+
+          <div class="sc-chips-group">
+            <span style="font-size: 11px; font-weight: 700; color: #8a7f8e; align-self: center;">+ Insert outline:</span>
+            <button type="button" class="sc-chip-btn" onclick="insertAgendaItem('1. Welcome & Introduction\n2. Review of Past Action Items\n3. Core Discussion & Updates\n4. Resolutions & Next Steps')">Full Standard Outline</button>
+            <button type="button" class="sc-chip-btn" onclick="insertAgendaItem('• Review of Membership & Mobilisation Metrics')">Metrics Review</button>
+            <button type="button" class="sc-chip-btn" onclick="insertAgendaItem('• Q&A and Open Floor Discussion')">Q&amp;A Section</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="sc-actions">
+        <a href="{% url 'meetings:list' %}" class="sc-btn-secondary">Cancel</a>
+        <button type="submit" class="sc-btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 12 19 16 14"/></svg>
+          Schedule Meeting
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function selectMode(mode, el) {
+    document.getElementById('id_mode').value = mode;
+    document.querySelectorAll('#format-grid .sc-format-card').forEach(function(card) {
+      card.classList.remove('active');
+    });
+    if (el) el.classList.add('active');
+
+    var platformBox = document.getElementById('platform-box');
+    var locWrap = document.getElementById('location-field-wrap');
+    var locLabel = document.getElementById('loc-label-text');
+    var locHint = document.getElementById('loc-hint-text');
+    var locInput = document.getElementById('id_location');
+
+    if (mode === 'in_person') {
+      platformBox.style.display = 'none';
+      locWrap.style.display = 'block';
+      locLabel.textContent = 'Physical Venue / Address *';
+      locHint.textContent = '— meeting hall, office, or field location';
+      locInput.placeholder = 'e.g. Lagos Chapter Hall, 14 Victoria Island Way';
+    } else if (mode === 'hybrid') {
+      platformBox.style.display = 'block';
+      locWrap.style.display = 'block';
+      locLabel.textContent = 'Physical Venue / Address *';
+      locHint.textContent = '— for in-person attendees (remote attendees join online)';
+      locInput.placeholder = 'e.g. Regional Office, Hall B';
+    } else { // virtual
+      platformBox.style.display = 'block';
+      locWrap.style.display = 'none';
+    }
+  }
+
+  function setDurationMinutes(mins) {
+    var startInput = document.getElementById('id_starts_at');
+    var endInput = document.getElementById('id_ends_at');
+    if (!startInput.value) {
+      var d = new Date();
+      d.setHours(d.getHours() + 1, 0, 0, 0);
+      startInput.value = formatDateTime(d);
+    }
+    var startDate = new Date(startInput.value);
+    if (!isNaN(startDate.getTime())) {
+      var endDate = new Date(startDate.getTime() + mins * 60000);
+      endInput.value = formatDateTime(endDate);
+    }
+    document.querySelectorAll('.sc-duration-btn').forEach(function(btn) {
+      btn.classList.remove('active');
+    });
+    if (event && event.target) {
+      event.target.classList.add('active');
+    }
+  }
+
+  function handleStartChange() {
+    var startInput = document.getElementById('id_starts_at');
+    var endInput = document.getElementById('id_ends_at');
+    if (startInput.value) {
+      var s = new Date(startInput.value);
+      if (!isNaN(s.getTime())) {
+        var e = new Date(s.getTime() + 60 * 60000); // default 1 hr
+        endInput.value = formatDateTime(e);
+      }
+    }
+  }
+
+  function formatDateTime(date) {
+    var pad = function(n) { return n < 10 ? '0' + n : n; };
+    var y = date.getFullYear();
+    var m = pad(date.getMonth() + 1);
+    var d = pad(date.getDate());
+    var h = pad(date.getHours());
+    var min = pad(date.getMinutes());
+    return y + '-' + m + '-' + d + 'T' + h + ':' + min;
+  }
+
+  function insertAgendaItem(text) {
+    var textarea = document.getElementById('id_agenda');
+    if (textarea.value.trim().length > 0) {
+      textarea.value += '\n\n' + text;
+    } else {
+      textarea.value = text;
+    }
+    textarea.focus();
+  }
+
+  function selectAccessMode(mode) {
+    var sel = document.getElementById('id_access');
+    if (sel) sel.value = mode;
+
+    document.querySelectorAll('#access-cards .access-card').forEach(function(card) {
+      card.classList.toggle('active', card.getAttribute('data-access') === mode);
+    });
+
+    var internalRow = document.getElementById('internal-targeting-row');
+    var guestBadge = document.getElementById('guest-admit-badge');
+    var inPersonCard = document.getElementById('in-person-mode-card');
+
+    if (mode === 'anyone') {
+      if (internalRow) internalRow.style.display = 'none';
+      if (guestBadge) {
+        guestBadge.textContent = 'Guest Link Enabled';
+        guestBadge.className = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-800';
+      }
+      if (inPersonCard) inPersonCard.style.display = 'none';
+      if (document.getElementById('id_mode').value === 'in_person') {
+        selectMode('virtual', document.querySelector('#format-grid [data-mode="virtual"]'));
+      }
+    } else {
+      if (internalRow) internalRow.style.display = '';
+      if (guestBadge) {
+        guestBadge.textContent = 'Entry Policy';
+        guestBadge.className = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-woddi-50 text-woddi-700';
+      }
+      if (inPersonCard) inPersonCard.style.display = '';
+    }
+  }
+
+  function selectGuestEntry(autoAdmit) {
+    var cb = document.getElementById('id_guest_auto_admit');
+    if (cb) cb.value = autoAdmit ? 'on' : '';
+
+    document.querySelectorAll('#guest-entry-cards .guest-entry-card').forEach(function(card) {
+      var isAuto = card.getAttribute('data-auto') === '1';
+      card.classList.toggle('active', isAuto === !!autoAdmit);
+    });
+  }
+
+  // Pre-fill start time if empty on initial page load
+  document.addEventListener('DOMContentLoaded', function() {
+    var startInput = document.getElementById('id_starts_at');
+    var endInput = document.getElementById('id_ends_at');
+    if (!startInput.value) {
+      var now = new Date();
+      now.setHours(now.getHours() + 1, 0, 0, 0);
+      startInput.value = formatDateTime(now);
+      var end = new Date(now.getTime() + 60 * 60000);
+      endInput.value = formatDateTime(end);
+    }
+    var accessSel = document.getElementById('id_access');
+    if (accessSel) {
+      selectAccessMode(accessSel.value || 'members');
+    }
+  });
+</script>
+{% endblock %}

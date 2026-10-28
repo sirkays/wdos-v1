@@ -1,0 +1,49 @@
+{% load static %}<!doctype html>
+<html lang="{{ lang }}" dir="{{ direction }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workspace — WDOS</title>
+<link rel="stylesheet" href="{% static 'accounts/design.css' %}"><link rel="stylesheet" href="{% static 'accounts/refinements.css' %}"><link rel="stylesheet" href="{% static 'accounts/onboarding.css' %}">
+{% include '_tailwind.html' %}
+<style>
+.ws-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:20px}
+.ws-tile{border:1px solid #e2e8f0;border-radius:14px;background:#fff;padding:18px;box-shadow:0 2px 10px rgba(15,23,42,.03)}.ws-tile b{display:block;font-size:28px;color:#d4006a;font-weight:800}.ws-tile span{font-size:13px;color:#475569;font-weight:500}
+.ws-list{list-style:none;margin:0;padding:0}.ws-list li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.ws-empty{color:#64748b;font-size:13px}
+</style>
+{% include 'onboarding/_sidebar_css.html' %}</head><body class="bg-slate-50 text-slate-900 antialiased">
+{% include 'onboarding/_sidebar.html' with tab=tab locked=False %}
+<main class="main"><div class="topbar"><div class="breadcrumb">Workspace <span> / </span> <span>{% if tab == 'activities' %}Activities{% elif tab == 'meetings' %}Meetings{% elif tab == 'tasks' %}Tasks{% elif tab == 'structure' %}My Leadership Structure{% elif tab == 'members' %}Members{% else %}Dashboard{% endif %}</span></div></div>
+<div class="content">
+<div class="pagehead mb-5"><div><div class="eyebrow text-xs font-extrabold uppercase tracking-wider text-woddi-600">{{ request.user.get_full_name|default:request.user.email }}</div>
+<h1 class="text-2xl font-extrabold text-slate-900 mt-0.5">{% if tab == 'activities' %}Activities{% elif tab == 'meetings' %}Meetings{% elif tab == 'tasks' %}Tasks{% elif tab == 'structure' %}My Leadership Structure{% elif tab == 'members' %}Members{% else %}Dashboard{% endif %}</h1>
+<p class="text-sm text-slate-600 mt-1">{% if seat %}{{ seat.get_role_display|default:seat.role }}{% elif is_hq %}Headquarters{% else %}Member{% endif %}{% if unit %} · {{ unit.name }}{% endif %}</p></div></div>
+
+{% if tab == 'dashboard' %}
+<div class="ws-tiles">
+<div class="ws-tile"><b>{{ task_count }}</b><span>Open tasks assigned to me</span></div>
+<div class="ws-tile"><b>{{ meetings|length }}</b><span>Upcoming meetings</span></div>
+<div class="ws-tile"><b>{{ activity_count }}</b><span>Recorded activities</span></div>
+<div class="ws-tile"><b>{{ member_count }}</b><span>{% if is_hq %}Members across the network{% else %}Members in my reach{% endif %}</span></div>
+{% if is_hq %}<div class="ws-tile"><b>{{ countries }}</b><span>Countries</span></div>{% endif %}
+<div class="ws-tile"><b>{{ unit_count }}</b><span>{% if is_hq %}Organisation units{% elif kind == "country" or kind == "state_region" %}States, LGAs and chapters under me{% else %}Units in my reach{% endif %}</span></div></div>
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="margin-top:20px"><div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">My open tasks</h2></div>
+{% if tasks %}<ul class="ws-list">{% for t in tasks %}<li><span><b>{{ t.title }}</b></span><small>{% if t.due_on %}Due {{ t.due_on|date:"j M Y" }}{% else %}No due date{% endif %}</small></li>{% endfor %}</ul>{% else %}<p class="ws-empty">No open tasks.</p>{% endif %}</section>
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="margin-top:20px"><div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">Upcoming meetings</h2></div>
+{% if meetings %}<ul class="ws-list">{% for m in meetings %}<li><span><b>{{ m.title }}</b></span><small>{{ m.starts_at|date:"j M Y, H:i" }}</small></li>{% endfor %}</ul>{% else %}<p class="ws-empty">No upcoming meetings.</p>{% endif %}</section>
+{% elif tab == 'tasks' %}
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">Tasks</h2></div>
+{% if tasks %}<ul class="ws-list">{% for t in tasks %}<li><span><b>{{ t.title }}</b> — {{ t.assigned_to.full_name }}</span><small>{{ t.get_status_display }}{% if t.due_on %} · due {{ t.due_on|date:"j M Y" }}{% endif %}</small></li>{% endfor %}</ul>{% else %}<p class="ws-empty">No tasks yet.</p>{% endif %}</section>
+{% elif tab == 'structure' %}
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">My seats</h2></div>
+{% if seats %}<ul class="ws-list">{% for s in seats %}<li><span><b>{{ s.get_role_display }}</b></span><small>{{ s.org_unit.name }} · since {{ s.starts_at|date:"j M Y" }}</small></li>{% endfor %}</ul>{% else %}<p class="ws-empty">No active seat.</p>{% endif %}</section>
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="margin-top:20px"><div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">Units in my reach</h2></div>
+{% if units %}<ul class="ws-list">{% for o in units %}<li><span><b>{{ o.name }}</b></span><small>{{ o.get_level_display }}</small></li>{% endfor %}</ul>{% else %}<p class="ws-empty">No units yet.</p>{% endif %}</section>
+{% elif tab == 'members' %}
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">Members in my reach</h2></div>
+{% if members %}<ul class="ws-list">{% for m in members %}<li><span><b>{{ m.full_name }}</b> — {{ m.get_network_display }}</span><small>{{ m.org_unit.name|default:"—" }} · {{ m.get_status_display }}</small></li>{% endfor %}</ul>{% else %}<p class="ws-empty">No members yet.</p>{% endif %}</section>{% elif tab == 'activities' %}
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">Activity records</h2></div>
+{% if activities %}<ul class="ws-list">{% for a in activities %}<li><span><b>{{ a.activity_type }}</b> — {{ a.description|truncatechars:90 }}</span><small>{{ a.activity_date|date:"j M Y" }} · {{ a.attendees_count }} attended</small></li>{% endfor %}</ul>{% else %}<p class="ws-empty">No activities recorded yet.</p>{% endif %}</section>
+{% else %}
+<section class="panel rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div class="panelhead"><h2 class="text-base font-extrabold text-slate-900">Meetings</h2></div>
+{% if meetings %}<ul class="ws-list">{% for m in meetings %}<li><span><b>{{ m.title }}</b>{% if m.location %} — {{ m.location }}{% endif %}</span><small>{{ m.starts_at|date:"j M Y, H:i" }} · {{ m.get_status_display }}</small></li>{% endfor %}</ul>{% else %}<p class="ws-empty">No meetings yet.</p>{% endif %}</section>
+{% endif %}
+</div></main></body></html>
