@@ -1,4 +1,39 @@
 <section id="prejoin-studio" class="panel rounded-2xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-sm">
+<style>
+  .wdos-cselect { position: static; display: inline-flex; width: 100%; flex: 1 1 auto; min-width: 0; }
+  .wdos-cselect.is-inline { width: auto; flex: 0 1 auto; }
+  .wdos-cselect-native { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; opacity: 0 !important; pointer-events: none !important; }
+  .wdos-cselect-btn {
+    width: 100%; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: transparent; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; text-align: left;
+  }
+  .wdos-cselect-btn:focus { outline: none; }
+  .wdos-cselect-chev { transition: transform 0.18s ease; flex-shrink: 0; color: #64748b; }
+  .wdos-cselect.open .wdos-cselect-chev { transform: rotate(180deg); color: #d4006a; }
+  .wdos-cselect-menu {
+    position: absolute; top: calc(100% + 6px); left: 0; width: 100%; min-width: 220px; max-height: 260px; overflow-y: auto;
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 6px;
+    box-shadow: 0 18px 40px -8px rgba(15, 23, 42, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+    z-index: 70; display: none; animation: wdosMenuIn 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .wdos-cselect.is-inline .wdos-cselect-menu { left: 0; width: 100%; min-width: 220px; }
+  .wdos-cselect.open .wdos-cselect-menu { display: block; }
+  @keyframes wdosMenuIn { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .wdos-cselect-opt {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 9px 11px; border-radius: 10px; border: 0; background: transparent;
+    font-size: 13px; font-weight: 600; color: #334155; cursor: pointer; text-align: left; transition: background 0.12s ease, color 0.12s ease;
+  }
+  .wdos-cselect-opt:hover, .wdos-cselect-opt.focused { background: #f8fafc; color: #0f172a; }
+  .wdos-cselect-opt.selected { background: #fdf2f8; color: #d4006a; font-weight: 750; }
+  .wdos-cselect-opt .opt-badge {
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 2px 6px; border-radius: 6px; background: #f1f5f9; color: #64748b; flex-shrink: 0;
+  }
+  .wdos-cselect-opt.selected .opt-badge { background: #fce7f3; color: #be185d; }
+  .wdos-cselect-check { width: 15px; height: 15px; color: #d4006a; opacity: 0; flex-shrink: 0; }
+  .wdos-cselect-opt.selected .wdos-cselect-check { opacity: 1; }
+</style>
   <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100">
     <div class="flex items-center gap-2.5">
       <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-woddi-50 text-woddi-600">
@@ -69,20 +104,18 @@
       <div class="space-y-3">
         <div>
           <label for="prejoin-audio-device" class="block text-xs font-bold text-slate-700 mb-1">Microphone Device</label>
-          <div class="relative flex items-center rounded-xl border border-slate-300 bg-white hover:border-woddi-400 focus-within:border-woddi-600 focus-within:ring-2 focus-within:ring-woddi-500/15 transition">
-            <select id="prejoin-audio-device" style="-webkit-appearance:none;-moz-appearance:none;appearance:none;border:0;background:transparent;padding:9px 32px 9px 12px;margin:0;" class="w-full text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
+          <div class="relative flex items-center rounded-xl border border-slate-300 bg-white hover:border-woddi-400 focus-within:border-woddi-600 focus-within:ring-2 focus-within:ring-woddi-500/15 transition px-3 py-2">
+            <select id="prejoin-audio-device" data-wdos-select class="w-full text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
               <option value="">Default Microphone</option>
             </select>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none absolute right-3 text-slate-500"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
         </div>
         <div>
           <label for="prejoin-video-device" class="block text-xs font-bold text-slate-700 mb-1">Camera Device</label>
-          <div class="relative flex items-center rounded-xl border border-slate-300 bg-white hover:border-woddi-400 focus-within:border-woddi-600 focus-within:ring-2 focus-within:ring-woddi-500/15 transition">
-            <select id="prejoin-video-device" style="-webkit-appearance:none;-moz-appearance:none;appearance:none;border:0;background:transparent;padding:9px 32px 9px 12px;margin:0;" class="w-full text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
+          <div class="relative flex items-center rounded-xl border border-slate-300 bg-white hover:border-woddi-400 focus-within:border-woddi-600 focus-within:ring-2 focus-within:ring-woddi-500/15 transition px-3 py-2">
+            <select id="prejoin-video-device" data-wdos-select class="w-full text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
               <option value="">Default Camera</option>
             </select>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none absolute right-3 text-slate-500"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
         </div>
       </div>
@@ -178,6 +211,7 @@
         });
         if (!vCount) videoSelect.innerHTML = '<option value="">Default Camera</option>';
       }
+      if (window.__wdosSyncSelects) window.__wdosSyncSelects();
       savePrefs();
     }).catch(function () {});
   }
@@ -374,5 +408,130 @@
   document.querySelectorAll('form').forEach(function (f) {
     f.addEventListener('submit', releaseAll);
   });
+
+  // Modern Custom Dropdown Enhancer for [data-wdos-select]
+  var openWrap = null;
+  function closeAllSelects() {
+    if (openWrap) {
+      openWrap.classList.remove('open');
+      var b = openWrap.querySelector('.wdos-cselect-btn');
+      if (b) b.setAttribute('aria-expanded', 'false');
+      openWrap = null;
+    }
+  }
+  document.addEventListener('click', function (ev) {
+    if (openWrap && !openWrap.contains(ev.target)) closeAllSelects();
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && openWrap) closeAllSelects();
+  });
+
+  function enhanceSelect(sel) {
+    if (!sel) return;
+    var wrap = sel._wdosWrap;
+    var isInline = sel.hasAttribute('data-wdos-inline');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'wdos-cselect' + (isInline ? ' is-inline' : '');
+      sel.parentNode.insertBefore(wrap, sel);
+      wrap.appendChild(sel);
+      sel.classList.add('wdos-cselect-native');
+      sel.tabIndex = -1;
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'wdos-cselect-btn';
+      btn.setAttribute('aria-haspopup', 'listbox');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.innerHTML = '<span class="wdos-cselect-label truncate"></span>' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="wdos-cselect-chev"><polyline points="6 9 12 15 18 9"/></svg>';
+
+      var menu = document.createElement('div');
+      menu.className = 'wdos-cselect-menu';
+      menu.setAttribute('role', 'listbox');
+
+      wrap.appendChild(btn);
+      wrap.appendChild(menu);
+      sel._wdosWrap = wrap;
+      sel._wdosBtn = btn;
+      sel._wdosMenu = menu;
+
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var wasOpen = wrap.classList.contains('open');
+        closeAllSelects();
+        if (!wasOpen) {
+          wrap.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
+          openWrap = wrap;
+        }
+      });
+      var parentField = wrap.parentElement;
+      if (parentField && parentField.classList.contains('relative')) {
+        parentField.style.cursor = 'pointer';
+        parentField.addEventListener('click', function (ev) {
+          if (wrap.contains(ev.target)) return;
+          btn.click();
+        });
+      }
+      sel.addEventListener('change', function () { renderSelect(sel); });
+    }
+    renderSelect(sel);
+  }
+
+  function renderSelect(sel) {
+    var btn = sel._wdosBtn, menu = sel._wdosMenu;
+    if (!btn || !menu) return;
+    var labelEl = btn.querySelector('.wdos-cselect-label');
+    var selOpt = sel.options[sel.selectedIndex] || sel.options[0];
+    if (labelEl) labelEl.textContent = selOpt ? selOpt.textContent : '';
+    menu.innerHTML = '';
+    var showCode = sel.name === 'lang';
+    Array.prototype.forEach.call(sel.options, function (opt, idx) {
+      var item = document.createElement('button');
+      item.type = 'button';
+      var isSelected = idx === sel.selectedIndex;
+      item.className = 'wdos-cselect-opt' + (isSelected ? ' selected' : '');
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+
+      var left = document.createElement('span');
+      left.className = 'flex items-center gap-2 min-w-0 truncate';
+      if (showCode && opt.value) {
+        var badge = document.createElement('span');
+        badge.className = 'opt-badge';
+        badge.textContent = opt.value.toUpperCase();
+        left.appendChild(badge);
+      }
+      var txt = document.createElement('span');
+      txt.className = 'truncate';
+      txt.textContent = opt.textContent;
+      left.appendChild(txt);
+
+      var check = document.createElement('span');
+      check.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="wdos-cselect-check"><polyline points="20 6 9 17 4 12"/></svg>';
+
+      item.appendChild(left);
+      item.appendChild(check.firstChild);
+      item.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (sel.selectedIndex !== idx) {
+          sel.selectedIndex = idx;
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+          renderSelect(sel);
+        }
+        closeAllSelects();
+      });
+      menu.appendChild(item);
+    });
+  }
+
+  window.__wdosSyncSelects = function () {
+    document.querySelectorAll('select[data-wdos-select]').forEach(enhanceSelect);
+  };
+  window.__wdosSyncSelects();
 })();
 </script>

@@ -67,7 +67,7 @@ def create_view(request):
     units = _managed_units(request.user)
     if not units.exists():
         raise Http404
-    now = timezone.now().replace(minute=0, second=0, microsecond=0) + timezone.timedelta(hours=1)
+    now = timezone.localtime().replace(minute=0, second=0, microsecond=0) + timezone.timedelta(hours=1)
     default_end = now + timezone.timedelta(hours=1)
     initial = {
         'starts_at': now.strftime('%Y-%m-%dT%H:%M'),
@@ -163,7 +163,7 @@ def _fmt_12h(dt):
     loc = timezone.localtime(dt)
     hour12 = loc.hour % 12 or 12
     ampm = 'AM' if loc.hour < 12 else 'PM'
-    return f"{loc.strftime('%a %d %b %Y')}, {hour12}:{loc.strftime('%M')} {ampm}"
+    return f"{loc.strftime('%a %d %b %Y')}, {hour12}:{loc.strftime('%M')} {ampm} {loc.strftime('%Z')}"
 
 
 def _fmt_time_12h(dt):

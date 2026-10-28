@@ -25,7 +25,7 @@
 
   <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600 inline-flex flex-wrap items-center justify-center gap-2">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-400 shrink-0"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    <span>Starts: <strong class="text-slate-800">{{ m.starts_at|date:"D j M Y, g:i A" }}</strong> · Ends: <strong class="text-slate-800">{% if m.starts_at|date:"Y-m-d" == m.ends_at|date:"Y-m-d" %}{{ m.ends_at|date:"g:i A" }}{% else %}{{ m.ends_at|date:"D j M Y, g:i A" }}{% endif %}</strong> (UTC)</span>
+    <span>Starts: <strong class="text-slate-800">{{ m.starts_at|date:"D j M Y, g:i A T" }}</strong> · Ends: <strong class="text-slate-800">{% if m.starts_at|date:"Y-m-d" == m.ends_at|date:"Y-m-d" %}{{ m.ends_at|date:"g:i A" }}{% else %}{{ m.ends_at|date:"D j M Y, g:i A T" }}{% endif %}</strong> (UTC)</span>
   </div>
 </div>
 {% endblock %}

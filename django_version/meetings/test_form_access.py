@@ -14,7 +14,7 @@ class T(TestCase):
         for s in STEPS: OnboardingProgress.objects.create(profile=hq, step_code=s['code'])
         self.client.force_login(hq)
         page = self.client.get(reverse('meetings:new'))
-        self.assertContains(page, 'Anyone with the link')
+        self.assertContains(page, 'Anyone with the Link')
         self.assertContains(page, 'name="guest_auto_admit"')
         now = timezone.now()
         r = self.client.post(reverse('meetings:new'), {'title': 'Open call', 'agenda': '', 'org_unit': unit.pk, 'mode': 'virtual', 'platform': 'woddi', 'location': '',
