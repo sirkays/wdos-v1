@@ -84,8 +84,6 @@
     grid-auto-rows: minmax(0, 1fr); gap: 14px;
   }
   .room-grid:empty { display: none; }
-  .room-grid[data-count="1"] { grid-template-columns: minmax(0, 920px); justify-content: center; }
-  .room-grid[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tile {
     position: relative; background: linear-gradient(145deg, #222631 0%, #181b23 100%);
     border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; overflow: hidden;
@@ -280,9 +278,7 @@
     .meet-title { font-size: 14.5px; max-width: 44vw; }
     .meet-status-pill { padding: 3px 9px; font-size: 11px; max-width: 44vw; }
     .meet-stage { padding: 10px; }
-    .room-grid { grid-template-columns: 1fr; gap: 10px; }
-    .room-grid[data-count="2"] { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(0, 1fr)); }
-    .tile { min-height: 140px; border-radius: 14px; }
+    .tile { border-radius: 14px; }
     .tile .av { width: 68px; height: 68px; font-size: 24px; }
     .live-cc-overlay { bottom: 10px; width: 94%; padding: 8px 12px; font-size: 13px; }
     /* Single-Row Floating Bottom Pill Bar on Mobile */
@@ -353,6 +349,10 @@
         <p>Joining WODDI Room as a listener with microphone muted…</p>
       </div>
       <div class="room-grid" id="grid"></div>
+<div class="stage-more" id="stage-more" hidden title="Cards show people with their camera on, the host, and whoever spoke last">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  <span data-more-text>Showing 6 of 6</span>
+</div>
       <div class="live-cc-overlay" id="live-cc-overlay" data-enabled="1"><span class="cc-speaker"></span><span class="cc-text"></span></div>
     </div>
     <div class="drawer-backdrop" id="drawer-backdrop"></div>

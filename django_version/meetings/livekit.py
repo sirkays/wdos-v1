@@ -14,8 +14,11 @@ def room_name(meeting):
 
 
 def _entry_meta(meeting, moderator):
-    """Meetings set to 'join muted': everyone except moderators starts with mic and camera locked (room.js reads this)."""
-    return {'micAllowed': False, 'camAllowed': False} if (meeting.mute_on_entry and not moderator) else {}
+    """Meetings set to 'join muted': everyone except moderators starts with mic, camera and screen sharing locked
+    (room.js reads this). A moderator then allows each person individually."""
+    if meeting.mute_on_entry and not moderator:
+        return {'micAllowed': False, 'camAllowed': False, 'shareAllowed': False}
+    return {}
 
 
 def make_token(user, meeting, moderator, language='en'):
@@ -68,6 +71,46 @@ def remove_participant(meeting, identity):
         return True
     except Exception:
         return False
+
+
+def end_room(meeting):
+    """End the meeting for everyone. Every browser is told first (so people see 'the host ended the meeting' instead of a
+    generic disconnect), then the room is deleted, which disconnects whoever is still in it. Waiting guests in the lobby are
+    told too. Fire-and-forget like push(): the database status already stops anyone getting back in."""
+    if missing_settings():
+        return False
+    import asyncio
+    import threading
+    from livekit import api
+
+    async def go():
+        lk = api.LiveKitAPI(settings.LIVEKIT_URL.replace('wss://', 'https://').replace('ws://', 'http://'),
+                            settings.LIVEKIT_API_KEY, settings.LIVEKIT_API_SECRET)
+        try:
+            for room, topic, payload in (
+                    (room_name(meeting), 'wdos_media_ctrl', {'target': '*', 'end': True}),
+                    (lobby_room_name(meeting), 'wdos_lobby_status', {'status': 'ended'})):
+                try:
+                    await lk.room.send_data(api.SendDataRequest(
+                        room=room, data=json.dumps(payload).encode(), kind=api.DataPacket.Kind.RELIABLE, topic=topic))
+                except Exception:
+                    pass
+            await asyncio.sleep(1.5)        # let the message reach every browser before the room goes away
+            for room in (room_name(meeting), lobby_room_name(meeting)):
+                try:
+                    await lk.room.delete_room(api.DeleteRoomRequest(room=room))
+                except Exception:
+                    pass
+        finally:
+            await lk.aclose()
+
+    def run():
+        try:
+            asyncio.run(go())
+        except Exception:
+            pass
+    threading.Thread(target=run, daemon=True).start()
+    return True
 
 
 def lobby_room_name(meeting):

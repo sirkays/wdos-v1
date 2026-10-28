@@ -21,6 +21,11 @@ from .logic import caption_packet, catch_up_rate, next_chunk, participant_lang, 
 log = logging.getLogger(__name__)
 
 
+class Superseded(ConnectionError):
+    """Another interpreter instance joined this room with the same identity (a deploy overlap, or a second worker) and
+    LiveKit removed this one. The supervisor must NOT rejoin straight away, or the two would keep kicking each other out."""
+
+
 def bot_token(room):
     from livekit import api
     g = api.VideoGrants(room_join=True, room=room, can_publish=True, can_subscribe=True, can_publish_data=True)
@@ -271,11 +276,16 @@ class RoomBot:
         from livekit import rtc
         self.room = rtc.Room()
         dropped = asyncio.Event()
+        superseded = []
 
         @self.room.on('disconnected')
-        def _disc(*_):
+        def _disc(reason=None, *_):
             if not stop.is_set():
-                log.warning('interpreter lost its connection to %s', self.room_name)
+                if reason == rtc.DisconnectReason.DUPLICATE_IDENTITY:
+                    superseded.append(True)
+                    log.warning('another interpreter took over %s; this one steps aside', self.room_name)
+                else:
+                    log.warning('interpreter lost its connection to %s (reason %s)', self.room_name, reason)
                 dropped.set()
 
         @self.room.on('track_subscribed')
@@ -329,4 +339,6 @@ class RoomBot:
         except Exception as exc:
             log.warning('interpreter disconnect: %s', exc)
         if dropped.is_set() and not stop.is_set():
+            if superseded:
+                raise Superseded(f'another interpreter took over {self.room_name}')
             raise ConnectionError(f'interpreter lost its connection to {self.room_name}')

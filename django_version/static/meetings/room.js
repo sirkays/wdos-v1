@@ -27,9 +27,12 @@
   var L = window.LivekitClient, room, myLang = $('lang').value, tiles = {};
   var csrf = cfg.querySelector('[name=csrfmiddlewaretoken]').value;
 
-  var BOT = 'wdos-translator-bot', audio = [], amMod = false, micAllowed = true, camAllowed = true;
-  var pPerms = {};   // identity -> { mic: bool, cam: bool }
+  var BOT = 'wdos-translator-bot', audio = [], amMod = false, micAllowed = true, camAllowed = true, shareAllowed = true;
+  var pPerms = {};   // identity -> { mic: bool, cam: bool, share: bool }
   var handUp = false, hands = {};   // raise hand: my own state, and who had a hand up last time we looked (for one toast per raise)
+  // Participant cards: never more than MAX_CARDS on screen, however many people are in the room. People with their camera on
+  // always get a card; the remaining slots go to the host, then whoever spoke most recently (see pickCards).
+  var MAX_CARDS = 6, shown = {}, joinSeq = {}, seqN = 0, lastSpoke = {}, gone = {};   // gone: removed by the host, still shown by LiveKit for a moment
   var AVATAR_COLORS = [
     'linear-gradient(135deg, #d4006a 0%, #9b004e 100%)',
     'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -46,13 +49,14 @@
     var m = metaOf(p), cached = pPerms[p.identity] || {};
     return {
       mic: cached.mic !== undefined ? cached.mic : (m.micAllowed !== false),
-      cam: cached.cam !== undefined ? cached.cam : (m.camAllowed !== false)
+      cam: cached.cam !== undefined ? cached.cam : (m.camAllowed !== false),
+      share: cached.share !== undefined ? cached.share : (m.shareAllowed !== false)
     };
   }
   function syncMyMeta() {
     if (!room || !room.localParticipant) return;
     room.localParticipant.setMetadata(JSON.stringify({
-      lang: myLang, moderator: amMod, micAllowed: micAllowed, camAllowed: camAllowed, hand: handUp
+      lang: myLang, moderator: amMod, micAllowed: micAllowed, camAllowed: camAllowed, shareAllowed: shareAllowed, hand: handUp
     }));
   }
 
@@ -66,34 +70,40 @@
     toastTimer = setTimeout(function () { t.hidden = true; }, 4500);
   }
 
+  var PERM_KEYS = ['mic', 'cam', 'share'];
+
+  // Host commands (allow/lock mic, camera, screen share; lower a hand; remove someone) go through the server, which checks the
+  // sender is a real moderator and then pushes the command to the person. Browsers only obey commands that come from the
+  // server, so a participant cannot forge "remove" or "end meeting" over the data channel.
   function sendMediaCtrl(targetIdentity, changes) {
-    if (!amMod || !room || !room.localParticipant) return;
-    if (targetIdentity === '*') {
-      room.remoteParticipants.forEach(function (p) {
-        if (isBot(p)) return;
-        pPerms[p.identity] = {
-          mic: changes.mic !== undefined ? changes.mic : permOf(p).mic,
-          cam: changes.cam !== undefined ? changes.cam : permOf(p).cam
-        };
-      });
-    } else {
-      var cur = pPerms[targetIdentity] || { mic: true, cam: true };
-      pPerms[targetIdentity] = {
-        mic: changes.mic !== undefined ? changes.mic : cur.mic,
-        cam: changes.cam !== undefined ? changes.cam : cur.cam
-      };
+    if (!amMod || !room || !cfg.dataset.controlUrl) return;
+    function remember(id, base) {
+      var next = {};
+      PERM_KEYS.forEach(function (k) { next[k] = changes[k] !== undefined ? changes[k] : base[k]; });
+      pPerms[id] = next;
     }
-    var pkt = new TextEncoder().encode(JSON.stringify({
-      target: targetIdentity, mic: changes.mic, cam: changes.cam, kick: changes.kick, lowerHand: changes.lowerHand
-    }));
-    room.localParticipant.publishData(pkt, { reliable: true, topic: 'wdos_media_ctrl' });
+    if (targetIdentity === '*') {
+      room.remoteParticipants.forEach(function (p) { if (!isBot(p)) remember(p.identity, permOf(p)); });
+    } else if (PERM_KEYS.some(function (k) { return changes[k] !== undefined; })) {
+      var who = room.remoteParticipants.get(targetIdentity);
+      remember(targetIdentity, who ? permOf(who) : { mic: true, cam: true, share: true });
+    }
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', csrf);
+    fd.append('target', targetIdentity);
+    PERM_KEYS.forEach(function (k) { if (changes[k] !== undefined) fd.append(k, changes[k] ? '1' : '0'); });
+    if (changes.lowerHand) fd.append('lowerHand', '1');
+    if (changes.kick) fd.append('kick', '1');
+    fetch(cfg.dataset.controlUrl, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'x-requested-with': 'fetch' } })
+      .then(function (r) { if (!r.ok) throw new Error('control'); })
+      .catch(function () { showMediaToast('Could not send that to the room \u2014 check your connection'); });
     renderModControls();
   }
 
   function kickParticipant(identity) {
     if (!amMod || !identity) return;
-    sendMediaCtrl(identity, { kick: true });
     if (identity.indexOf('guest-') === 0) {
+      // guests are removed through the waiting-room endpoint, which also blocks them from coming straight back in
       var gid = identity.slice(6), gp = $('guestpanel');
       if (gp && gp.dataset.json && /^\d+$/.test(gid)) {
         var fd = new FormData();
@@ -102,122 +112,175 @@
           method: 'POST', body: fd, credentials: 'same-origin', headers: { 'x-requested-with': 'fetch' }
         }).then(function () { document.dispatchEvent(new CustomEvent('wdos:lobby')); }).catch(function () {});
       }
+    } else {
+      sendMediaCtrl(identity, { kick: true });
     }
+    gone[identity] = true;
     if (tiles[identity]) remove({ identity: identity });
+    else { layoutGrid(); renderModControls(); }
   }
-  document.addEventListener('wdos:kick', function (ev) {
-    if (ev && ev.detail && ev.detail.identity) sendMediaCtrl(ev.detail.identity, { kick: true });
-  });
 
-  function renderModControls() {
-    if (!amMod || !room) return;
-    var listEl = $('live-participants-list');
-    var remotes = [];
-    room.remoteParticipants.forEach(function (p) { if (!isBot(p)) remotes.push(p); });
+  // ---- People panel (moderators): search anyone, then allow or lock mic / camera / screen sharing ------------------------
+  // Built for a big room: only rows that match the search are drawn, repaints are batched, and nothing is drawn while the panel
+  // is closed. The video cards on the stage are a separate, capped view (see pickCards).
+  var plQuery = '', plHandsOnly = false, modTimer = null, armedRemove = null, armedTimer = null;
+  var plList = $('live-participants-list'), plSearch = $('pl-search'), plClear = $('pl-search-clear');
+  var plHandsBtn = $('pl-hands-filter'), plResult = $('pl-result');
+  var ICONS = {
+    mic: '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>',
+    cam: '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>',
+    share: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    manage: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>'
+  };
+  var PERM_LABEL = { mic: 'Microphone', cam: 'Camera', share: 'Screen sharing' };
 
-    // Update tile overlay controls on each remote tile
-    remotes.forEach(function (p) {
-      var d = tiles[p.identity];
-      if (!d) return;
-      var bar = d.querySelector('.tile-mod-bar');
-      if (!bar) {
-        bar = document.createElement('div');
-        bar.className = 'tile-mod-bar';
-        d.appendChild(bar);
-      }
-      var prm = permOf(p);
-      bar.innerHTML = '';
-      var micBtn = document.createElement('button');
-      micBtn.type = 'button';
-      micBtn.className = 'mod-ctrl-btn ' + (prm.mic ? 'allowed' : 'locked');
-      micBtn.textContent = prm.mic ? 'Mic Allowed' : 'Allow Mic';
-      micBtn.title = prm.mic ? 'Click to mute & lock microphone' : 'Click to allow microphone';
-      micBtn.onclick = function () { sendMediaCtrl(p.identity, { mic: !prm.mic }); };
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function icon(name, size) {
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
+  }
 
-      var camBtn = document.createElement('button');
-      camBtn.type = 'button';
-      camBtn.className = 'mod-ctrl-btn ' + (prm.cam ? 'allowed' : 'locked');
-      camBtn.textContent = prm.cam ? 'Video Allowed' : 'Allow Video';
-      camBtn.title = prm.cam ? 'Click to stop & lock camera' : 'Click to allow camera';
-      camBtn.onclick = function () { sendMediaCtrl(p.identity, { cam: !prm.cam }); };
+  function peopleOpen() {
+    var d = $('meet-drawer'), pane = $('drawer-pane-people'), seg = $('seg-people');
+    return !!(d && pane && !d.classList.contains('collapsed') && !pane.hidden && (!seg || !seg.hidden));
+  }
 
-      var kickBtn = document.createElement('button');
-      kickBtn.type = 'button';
-      kickBtn.className = 'mod-ctrl-btn locked';
-      kickBtn.textContent = 'Remove';
-      kickBtn.title = 'Remove participant from the meeting';
-      kickBtn.onclick = function () { kickParticipant(p.identity); };
+  function renderModControls() {            // batched: many room events can ask for a repaint in the same moment
+    if (!amMod || !room || modTimer) return;
+    modTimer = setTimeout(function () { modTimer = null; paintModControls(); }, 150);
+  }
 
-      bar.appendChild(micBtn);
-      bar.appendChild(camBtn);
-      bar.appendChild(kickBtn);
-    });
+  function personRow(p) {
+    var prm = permOf(p), up = !!hands[p.identity], name = p.name || 'Participant';
+    var li = el('li', 'pl-row' + (up ? ' hand-up' : ''));
+    var av = el('span', 'pl-av', initialsOf(p.name));
+    av.style.background = colorFor(p.identity || p.name);
+    av.setAttribute('aria-hidden', 'true');
 
-    if (!listEl) return;
-    listEl.innerHTML = '';
-    if (!remotes.length) {
-      listEl.innerHTML = '<li class="ws-empty" style="color:#64748b !important;">No other participants in the room yet.</li>';
-      return;
+    var main = el('div', 'pl-main');
+    var nm = el('span', 'pl-name', name);
+    nm.title = name;
+    var meta = el('div', 'pl-meta');
+    meta.appendChild(el('span', 'pl-lang', (langOf(p) || 'en').toUpperCase()));
+    var live = [];
+    if (p.isScreenShareEnabled) live.push('Presenting');
+    if (p.isMicrophoneEnabled) live.push('Mic on');
+    if (p.isCameraEnabled) live.push('Camera on');
+    if (live.length) meta.appendChild(el('span', 'pl-live', live.join(' \u00B7 ')));
+    if (up) {
+      var hb = el('button', 'pl-hand');
+      hb.type = 'button';
+      hb.title = 'Hand raised \u2014 click to lower it';
+      hb.textContent = '\u270B Lower';
+      hb.onclick = function () { sendMediaCtrl(p.identity, { lowerHand: true }); };
+      meta.appendChild(hb);
     }
-    // Raised hands first, so the host sees who wants to speak without scrolling.
-    remotes.sort(function (a, b) { return (hands[b.identity] ? 1 : 0) - (hands[a.identity] ? 1 : 0); });
-    remotes.forEach(function (p) {
-      var prm = permOf(p), up = !!hands[p.identity];
-      var li = document.createElement('li');
-      if (up) li.className = 'hand-up';
+    main.appendChild(nm);
+    main.appendChild(meta);
 
-      var head = document.createElement('div');
-      head.className = 'pl-head';
-      var nm = document.createElement('span');
-      nm.className = 'pl-name';
-      nm.textContent = p.name || 'Participant';
-      var lg = document.createElement('span');
-      lg.className = 'pl-lang';
-      lg.textContent = (langOf(p) || 'en').toUpperCase();
-      head.appendChild(nm);
-      head.appendChild(lg);
-      if (up) {
-        var hb = document.createElement('button');
-        hb.type = 'button';
-        hb.className = 'pl-hand-chip';
-        hb.title = 'Hand raised — click to lower it';
-        hb.textContent = '\u270B Lower';
-        hb.onclick = function () { sendMediaCtrl(p.identity, { lowerHand: true }); };
-        head.appendChild(hb);
-      }
-      var kb = document.createElement('button');
-      kb.type = 'button';
-      kb.className = 'pl-remove';
-      kb.title = 'Remove from the meeting';
-      kb.setAttribute('aria-label', 'Remove ' + (p.name || 'participant') + ' from the meeting');
-      kb.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-      kb.onclick = function () { kickParticipant(p.identity); };
-      head.appendChild(kb);
-
-      var acts = document.createElement('div');
-      acts.className = 'pl-actions';
-      var mBtn = document.createElement('button');
-      mBtn.type = 'button';
-      mBtn.className = 'mod-ctrl-btn ' + (prm.mic ? 'allowed' : 'locked');
-      mBtn.textContent = prm.mic ? 'Mic allowed' : 'Mic locked';
-      mBtn.title = prm.mic ? 'Click to mute & lock microphone' : 'Click to allow microphone';
-      mBtn.onclick = function () { sendMediaCtrl(p.identity, { mic: !prm.mic }); };
-
-      var cBtn = document.createElement('button');
-      cBtn.type = 'button';
-      cBtn.className = 'mod-ctrl-btn ' + (prm.cam ? 'allowed' : 'locked');
-      cBtn.textContent = prm.cam ? 'Video allowed' : 'Video locked';
-      cBtn.title = prm.cam ? 'Click to stop & lock camera' : 'Click to allow camera';
-      cBtn.onclick = function () { sendMediaCtrl(p.identity, { cam: !prm.cam }); };
-
-      acts.appendChild(mBtn);
-      acts.appendChild(cBtn);
-      li.appendChild(head);
-      li.appendChild(acts);
-      listEl.appendChild(li);
+    var ctrls = el('div', 'pl-ctrls');
+    PERM_KEYS.forEach(function (k) {
+      var on = prm[k];
+      var b = el('button', 'pl-tog ' + (on ? 'on' : 'off'));
+      b.type = 'button';
+      b.innerHTML = icon(k, 15);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.title = PERM_LABEL[k] + (on ? ' allowed \u2014 click to lock' : ' locked \u2014 click to allow');
+      b.setAttribute('aria-label', PERM_LABEL[k] + ' for ' + name + ': ' + (on ? 'allowed' : 'locked'));
+      b.onclick = function () { var change = {}; change[k] = !on; sendMediaCtrl(p.identity, change); };
+      ctrls.appendChild(b);
     });
+    var armed = armedRemove === p.identity;
+    var kb = el('button', 'pl-remove' + (armed ? ' armed' : ''));
+    kb.type = 'button';
+    if (armed) kb.textContent = 'Remove?'; else kb.innerHTML = icon('x', 13);
+    kb.title = armed ? 'Click again to remove ' + name : 'Remove from the meeting';
+    kb.setAttribute('aria-label', 'Remove ' + name + ' from the meeting');
+    kb.onclick = function () {
+      if (armedRemove === p.identity) { armedRemove = null; clearTimeout(armedTimer); kickParticipant(p.identity); return; }
+      armedRemove = p.identity;
+      clearTimeout(armedTimer);
+      armedTimer = setTimeout(function () { armedRemove = null; paintModControls(); }, 3000);
+      paintModControls();
+    };
+    ctrls.appendChild(kb);
+
+    li.appendChild(av);
+    li.appendChild(main);
+    li.appendChild(ctrls);
+    return li;
   }
 
+  function paintModControls() {
+    if (!amMod || !room) return;
+    var all = [];
+    room.remoteParticipants.forEach(function (p) { if (!isBot(p) && !gone[p.identity]) all.push(p); });
+    var handsN = all.filter(function (p) { return hands[p.identity]; }).length;
+    document.querySelectorAll('[data-people-count]').forEach(function (e) { e.textContent = String(all.length); });
+    if (plHandsBtn) {
+      plHandsBtn.hidden = handsN === 0 && !plHandsOnly;
+      var hc = $('pl-hands-count'); if (hc) hc.textContent = String(handsN);
+    }
+    if (!plList || !peopleOpen()) return;
+
+    var q = plQuery.trim().toLowerCase();
+    var rows = all.filter(function (p) {
+      if (plHandsOnly && !hands[p.identity]) return false;
+      return !q || (p.name || '').toLowerCase().indexOf(q) !== -1 || (langOf(p) || '').indexOf(q) === 0;
+    });
+    // Raised hands first, then alphabetical, so a name is easy to find by scanning as well as by searching.
+    rows.sort(function (a, b) {
+      var h = (hands[b.identity] ? 1 : 0) - (hands[a.identity] ? 1 : 0);
+      return h || (a.name || '').localeCompare(b.name || '');
+    });
+    if (plResult) {
+      plResult.textContent = !all.length ? '' : (q || plHandsOnly)
+        ? rows.length + ' of ' + all.length + (all.length === 1 ? ' person' : ' people')
+        : all.length + (all.length === 1 ? ' person' : ' people') + ' in the room';
+    }
+    var frag = document.createDocumentFragment();
+    if (!rows.length) {
+      frag.appendChild(el('li', 'pl-empty', !all.length ? 'Nobody else is in the room yet.'
+        : plHandsOnly && !q ? 'No raised hands right now.' : 'No one matches \u201C' + plQuery.trim() + '\u201D.'));
+    } else {
+      rows.forEach(function (p) { frag.appendChild(personRow(p)); });
+    }
+    var keep = plList.scrollTop;
+    plList.innerHTML = '';
+    plList.appendChild(frag);
+    plList.scrollTop = keep;
+  }
+
+  if (plSearch) plSearch.addEventListener('input', function () {
+    plQuery = plSearch.value;
+    if (plClear) plClear.hidden = !plQuery;
+    paintModControls();
+  });
+  if (plSearch) plSearch.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && plSearch.value) { e.stopPropagation(); plSearch.value = ''; plQuery = ''; if (plClear) plClear.hidden = true; paintModControls(); }
+  });
+  if (plClear) plClear.addEventListener('click', function () {
+    plSearch.value = ''; plQuery = ''; plClear.hidden = true; paintModControls(); plSearch.focus();
+  });
+  if (plHandsBtn) plHandsBtn.addEventListener('click', function () {
+    plHandsOnly = !plHandsOnly;
+    plHandsBtn.setAttribute('aria-pressed', plHandsOnly ? 'true' : 'false');
+    plHandsBtn.classList.toggle('on', plHandsOnly);
+    paintModControls();
+  });
+  document.addEventListener('wdos:people-shown', paintModControls);
+  // "Manage" on a video card: open the people panel already searched for that person.
+  document.addEventListener('wdos:manage', function (ev) {
+    var name = (ev.detail && ev.detail.name) || '';
+    if (plSearch) { plSearch.value = name; plQuery = name; if (plClear) plClear.hidden = !name; }
+    document.dispatchEvent(new CustomEvent('wdos:open-people'));
+    paintModControls();
+  });
   // ---- Raise hand -----------------------------------------------------------------------------------------
   // The raised state travels in each person's signed participant metadata (like language), so late joiners see it too
   // and nobody can raise a hand on someone else's behalf. The host can lower a hand with a command.
@@ -285,14 +348,86 @@
     return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
   }
 
+  function everyone() {          // me first, then everyone else except the interpreter bot
+    var out = [];
+    if (room && room.localParticipant) out.push(room.localParticipant);
+    if (room) room.remoteParticipants.forEach(function (p) { if (!isBot(p) && !gone[p.identity]) out.push(p); });
+    return out;
+  }
+
   function syncGridCount() {
-    var count = Object.keys(tiles).length;
-    if (grid) grid.setAttribute('data-count', String(count));
-    if (emptyStage) emptyStage.style.display = count > 0 ? 'none' : '';
+    var count = everyone().length;
     if (pCount) pCount.textContent = String(count);
     if (room && room.state === 'connected') {
-      setStatus((amMod ? 'Connected as moderator' : 'Connected as listener') + ' · ' + count + ' in room', 'live');
+      setStatus((amMod ? 'Connected as moderator' : 'Connected as listener') + ' \u00B7 ' + count + ' in room', 'live');
     }
+  }
+
+  // ---- Participant cards (never more than MAX_CARDS) --------------------------------------------------------
+  // Everyone in the room has a tile element, but only the best MAX_CARDS are put on the stage:
+  //   1. people with their camera on (anyone who shares video is included, up to the cap),
+  //   2. then the host(s), then whoever spoke most recently, then people already on screen (so cards do not jump around),
+  //   3. then me, then whoever joined first.
+  // Video is only downloaded for the cards on screen, so a big room costs no more bandwidth than a small one.
+  function hasCam(p) { try { return !!p.isCameraEnabled; } catch (e) { return false; } }
+  function isMod(p) { return p.isLocal ? amMod : !!metaOf(p).moderator; }
+  function recent(id) { var t = lastSpoke[id] || 0; return Date.now() - t < 20000 ? t : 0; }
+
+  function better(a, b) {         // < 0: a deserves a card before b
+    var ia = a.identity, ib = b.identity, ca = hasCam(a), cb = hasCam(b);
+    if (ca !== cb) return ca ? -1 : 1;
+    if (ca) {
+      if (!!shown[ia] !== !!shown[ib]) return shown[ia] ? -1 : 1;
+      if (recent(ib) !== recent(ia)) return recent(ib) - recent(ia);
+    } else {
+      if (isMod(a) !== isMod(b)) return isMod(a) ? -1 : 1;
+      if (recent(ib) !== recent(ia)) return recent(ib) - recent(ia);
+      if (!!shown[ia] !== !!shown[ib]) return shown[ia] ? -1 : 1;
+    }
+    if (a.isLocal !== b.isLocal) return a.isLocal ? -1 : 1;
+    return joinSeq[ia] - joinSeq[ib];
+  }
+
+  function pickCards(list) {
+    list.forEach(function (p) { if (joinSeq[p.identity] === undefined) joinSeq[p.identity] = seqN++; });
+    var chosen = list.slice().sort(better).slice(0, MAX_CARDS);
+    var me = room && room.localParticipant;
+    if (me && hasCam(me) && chosen.indexOf(me) === -1 && chosen.length) chosen[chosen.length - 1] = me;   // always see my own video
+    return chosen;
+  }
+
+  var layoutTimer = null, moreChip = $('stage-more');
+  function scheduleLayout() {     // batched: a burst of room events lays the cards out once
+    if (layoutTimer) return;
+    layoutTimer = setTimeout(layoutGrid, 350);
+  }
+
+  function layoutGrid() {
+    clearTimeout(layoutTimer);
+    layoutTimer = null;
+    if (!room || !grid || !room.localParticipant) return;
+    var list = everyone(), chosen = pickCards(list), next = {};
+    chosen.forEach(function (p) { next[p.identity] = true; });
+    // Take cards away from people who lost their place. The tile is kept (not destroyed) so it is ready if they come back.
+    // Cards already on screen are never re-inserted: moving a <video> in the page would pause it.
+    Object.keys(shown).forEach(function (id) {
+      if (!next[id] && tiles[id] && tiles[id].parentNode === grid) grid.removeChild(tiles[id]);
+    });
+    chosen.forEach(function (p) {
+      var d = tile(p);
+      if (d.parentNode !== grid) grid.appendChild(d);
+    });
+    shown = next;
+    grid.setAttribute('data-count', String(chosen.length));
+    if (emptyStage) emptyStage.style.display = chosen.length ? 'none' : '';
+    if (moreChip) {
+      moreChip.hidden = list.length <= chosen.length;
+      var t = moreChip.querySelector('[data-more-text]');
+      if (t) t.textContent = 'Showing ' + chosen.length + ' of ' + list.length;
+      if (stageEl) stageEl.classList.toggle('has-more', !moreChip.hidden);
+    }
+    syncGridCount();
+    syncSubscriptions();          // start video for the new cards, stop it for the ones that left
   }
 
   // With the interpreter present, hear each speaker in YOUR language: their real voice if they speak it,
@@ -337,14 +472,16 @@
     applyAudio();
   }
 
-  // Subscribe to every video track, and only to the audio tracks I should hear. Re-run whenever someone joins, publishes,
-  // or changes language, and when I change mine.
+  // Subscribe only to what I need: the audio I should hear, screen shares, and video for the cards on screen. Re-run whenever
+  // someone joins, publishes, changes language or the cards change.
   function syncSubscriptions() {
     if (!room || room.state !== 'connected') return;
     var bot = botHere();
     room.remoteParticipants.forEach(function (p) {
       p.trackPublications.forEach(function (pub) {
-        var want = pub.kind === 'video' ? true : wantsAudio(p, pub, bot);
+        var want = pub.kind === 'video'
+          ? (pub.source === L.Track.Source.ScreenShare || !!shown[p.identity])
+          : wantsAudio(p, pub, bot);
         if (pub._wdosWant === want) return;
         pub._wdosWant = want;
         pub.setSubscribed(want);
@@ -424,20 +561,31 @@
     syncScreenLayout();
   }
 
+  function shareLocked() { return !shareAllowed && !amMod; }
+
   function renderShareBtn() {
-    if (!shareBtn) return;
-    shareBtn.classList.toggle('on', sharing);
-    shareBtn.setAttribute('aria-pressed', sharing ? 'true' : 'false');
-    shareBtn.title = sharing ? 'Stop presenting' : 'Present your screen';
-    setLabel(shareBtn, sharing ? 'Stop sharing' : 'Share');
+    var locked = shareLocked();
+    if (shareBtn) {
+      shareBtn.classList.toggle('on', sharing);
+      shareBtn.classList.toggle('is-locked', locked);
+      shareBtn.setAttribute('aria-pressed', sharing ? 'true' : 'false');
+      shareBtn.disabled = locked && !sharing;
+      shareBtn.title = locked && !sharing ? 'Screen sharing is locked \u2014 ask the host to allow it'
+        : sharing ? 'Stop presenting' : 'Present your screen';
+      setLabel(shareBtn, sharing ? 'Stop sharing' : 'Share');
+    }
+    document.querySelectorAll('[data-share-toggle]').forEach(function (b) {
+      b.disabled = locked && !sharing;
+      b.classList.toggle('is-locked', locked && !sharing);
+    });
     document.querySelectorAll('[data-share-state]').forEach(function (e) {
-      e.textContent = sharing ? 'Sharing now · tap to stop' : 'Present to everyone';
+      e.textContent = locked && !sharing ? 'Locked \u2014 ask the host' : sharing ? 'Sharing now \u00B7 tap to stop' : 'Present to everyone';
     });
   }
 
   function setScreenShare(on) {
     if (!room || room.state !== 'connected') return Promise.resolve();
-    if (on && !camAllowed && !amMod) { showMediaToast('Sharing is locked by the host'); return Promise.resolve(); }
+    if (on && shareLocked()) { showMediaToast('Screen sharing is locked \u2014 ask the host to allow it'); return Promise.resolve(); }
     return room.localParticipant.setScreenShareEnabled(!!on, on ? { audio: false, contentHint: 'detail' } : undefined)
       .then(function () { sharing = !!on; renderShareBtn(); })
       .catch(function () { sharing = false; renderShareBtn(); });   // picker cancelled or blocked: stay as we were
@@ -537,6 +685,7 @@
     if (chatInput && window.innerWidth > 900) chatInput.focus();   // on phones focusing would pop the keyboard up uninvited
   });
 
+  // A tile exists for everyone in the room, but it only appears on the stage when layoutGrid() gives it a card.
   function tile(p) {
     if (isBot(p)) return document.createElement('div');
     if (tiles[p.identity]) return tiles[p.identity];
@@ -553,9 +702,19 @@
     av.style.background = colorFor(p.identity || p.name);
     d.querySelector('.nm').textContent = (p.name || 'Guest') + (p.isLocal ? ' (you)' : '');
     d.querySelector('.tile-lang').textContent = (langOf(p) || 'en').toUpperCase();
-    grid.appendChild(d);
+    if (amMod && !p.isLocal) {
+      // The only host control on a card: jump to this person in the people panel (permissions live there, once).
+      var mg = document.createElement('button');
+      mg.type = 'button';
+      mg.className = 'tile-manage';
+      mg.title = 'Manage ' + (p.name || 'participant');
+      mg.setAttribute('aria-label', 'Manage ' + (p.name || 'participant'));
+      mg.innerHTML = icon('manage', 13) + '<span>Manage</span>';
+      mg.onclick = function () { document.dispatchEvent(new CustomEvent('wdos:manage', { detail: { name: p.name || '' } })); };
+      d.appendChild(mg);
+    }
     tiles[p.identity] = d;
-    syncGridCount();
+    scheduleLayout();
     return d;
   }
 
@@ -602,14 +761,17 @@
 
   function remove(p) {
     removeScreen(p);
+    delete shown[p.identity];
+    delete lastSpoke[p.identity];
+    delete joinSeq[p.identity];
     if (tiles[p.identity]) {
       tiles[p.identity].remove();
       delete tiles[p.identity];
       delete pPerms[p.identity];
       delete hands[p.identity];
-      syncGridCount();
-      renderModControls();
     }
+    layoutGrid();           // someone left: give their card to the next person straight away
+    renderModControls();
   }
 
   var ccHideTimer = null;
@@ -651,29 +813,38 @@
   fetch(cfg.dataset.token, { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error); return j; }); })
     .then(function (t) {
       room = new L.Room({ adaptiveStream: true, dynacast: true });
+      function onMediaChange() { syncSubscriptions(); scheduleLayout(); renderModControls(); }
       room.on(L.RoomEvent.TrackSubscribed, function (tr, pub, p) { attach(tr, p, pub); })
           .on(L.RoomEvent.TrackUnsubscribed, function (tr, pub, p) { detach(tr, p); })
-          .on(L.RoomEvent.TrackPublished, function () { syncSubscriptions(); })
-          .on(L.RoomEvent.ParticipantConnected, function (p) { tile(p); applyAudio(); renderHands(); })
+          .on(L.RoomEvent.TrackPublished, onMediaChange)
+          .on(L.RoomEvent.TrackUnpublished, onMediaChange)
+          .on(L.RoomEvent.TrackMuted, onMediaChange)       // a camera going on or off changes who deserves a card
+          .on(L.RoomEvent.TrackUnmuted, onMediaChange)
+          .on(L.RoomEvent.ParticipantConnected, function (p) { delete gone[p.identity]; tile(p); applyAudio(); renderHands(); syncGridCount(); })
           .on(L.RoomEvent.ParticipantMetadataChanged, function () { applyAudio(); renderHands(); })
-          .on(L.RoomEvent.ParticipantDisconnected, function (p) { remove(p); applyAudio(); })
+          .on(L.RoomEvent.ParticipantDisconnected, function (p) { remove(p); delete gone[p.identity]; applyAudio(); syncGridCount(); })
           .on(L.RoomEvent.ActiveSpeakersChanged, function (sp) {
+            var now = Date.now(), needLayout = false;
             Object.keys(tiles).forEach(function (k) { tiles[k].classList.remove('speaking'); });
-            sp.forEach(function (p) { if (tiles[p.identity]) tiles[p.identity].classList.add('speaking'); });
+            sp.forEach(function (p) {
+              if (isBot(p)) return;
+              lastSpoke[p.identity] = now;
+              if (tiles[p.identity]) tiles[p.identity].classList.add('speaking');
+              if (!shown[p.identity]) needLayout = true;      // someone is talking who has no card: give them one
+            });
+            if (needLayout) scheduleLayout();
           })
           .on(L.RoomEvent.DataReceived, function (payload, p, kind, topic) {
             if (topic === 'wdos_lobby') { document.dispatchEvent(new CustomEvent('wdos:lobby')); return; }   // host lobby changed
             if (topic === CHAT_TOPIC) { onChat(payload, p); return; }
             if (topic === 'wdos_media_ctrl') {
-              if (p && (isBot(p) || p.identity.indexOf('guest-') === 0)) return;   // only server or members can send host commands, never guests
+              if (p) return;    // host commands only ever come from the server (it checks the sender is a moderator); another browser cannot forge one
               try {
                 var cmd = JSON.parse(new TextDecoder().decode(payload));
                 var myId = room && room.localParticipant && room.localParticipant.identity;
                 if (!myId || (cmd.target !== '*' && cmd.target !== myId)) return;
-                if (cmd.kick && !amMod) {
-                  exitRoomAsRemoved();
-                  return;
-                }
+                if (cmd.end) { exitRoom('ended'); return; }                    // the host ended the meeting for everyone
+                if (cmd.kick && !amMod) { exitRoom('removed'); return; }
                 if (cmd.lowerHand && handUp) {
                   setHand(false);
                   showMediaToast('The host lowered your hand');
@@ -686,8 +857,8 @@
                     speak.classList.remove('on');
                   }
                   speak.disabled = !micAllowed;
-                  setLabel(speak, micAllowed ? (talking ? 'Speaking — tap to stop' : 'Tap to speak') : 'Mic locked by host');
-                  showMediaToast(micAllowed ? 'Host allowed your microphone — tap Speak to talk' : 'Host muted & locked your microphone');
+                  setLabel(speak, micAllowed ? (talking ? 'Speaking \u2014 tap to stop' : 'Tap to speak') : 'Mic locked by host');
+                  showMediaToast(micAllowed ? 'Host allowed your microphone \u2014 tap Speak to talk' : 'Host muted & locked your microphone');
                 }
                 if (cmd.cam !== undefined && !amMod) {
                   camAllowed = !!cmd.cam;
@@ -698,10 +869,14 @@
                     detach({ kind: 'video', detach: function () { return []; } }, room.localParticipant);
                   }
                   cam.disabled = !camAllowed;
-                  if (!camAllowed && sharing) setScreenShare(false);   // "video" permission covers presenting too
-                  if (shareBtn) shareBtn.disabled = !camAllowed;
                   setLabel(cam, camAllowed ? (camOn ? 'Camera off' : 'Camera on') : 'Video locked by host');
-                  showMediaToast(camAllowed ? 'Host allowed your camera — tap Camera on' : 'Host turned off & locked your camera');
+                  showMediaToast(camAllowed ? 'Host allowed your camera \u2014 tap Camera on' : 'Host turned off & locked your camera');
+                }
+                if (cmd.share !== undefined && !amMod) {
+                  shareAllowed = !!cmd.share;
+                  if (!shareAllowed && sharing) setScreenShare(false);
+                  renderShareBtn();
+                  showMediaToast(shareAllowed ? 'Host allowed you to share your screen' : 'Host turned off screen sharing for you');
                 }
                 syncMyMeta();
               } catch (e) {}
@@ -713,31 +888,33 @@
           .on(L.RoomEvent.LocalTrackPublished, function (pub, p) {
             // also fires when the browser's own "Stop sharing" bar ends a share, so the button never gets out of sync
             if (pub.source === L.Track.Source.ScreenShare && pub.track) { attachScreen(pub.track, p); sharing = true; renderShareBtn(); }
+            scheduleLayout();
           })
           .on(L.RoomEvent.LocalTrackUnpublished, function (pub, p) {
             if (pub.source === L.Track.Source.ScreenShare) { removeScreen(p); sharing = false; renderShareBtn(); }
+            scheduleLayout();
           })
           .on(L.RoomEvent.Reconnected, function () { document.dispatchEvent(new CustomEvent('wdos:lobby')); })
           .on(L.RoomEvent.Disconnected, function () {
             setStatus('Disconnected', 'offline');
             speak.disabled = cam.disabled = true;
             if (handBtn) handBtn.disabled = true;
-            if (!leavingVoluntarily) exitRoomAsRemoved();
+            if (!leavingVoluntarily) exitRoom('removed');
           });
       // autoSubscribe off: we pick the tracks ourselves (see wantsAudio) so nobody downloads audio they should not hear
       return room.connect(t.url, t.token, { autoSubscribe: false }).then(function () {
         amMod = !!t.moderator;
-        // "Join muted": the server marks my token with locked mic/camera; honour it before the controls are enabled.
+        // "Join muted": the server marks my token with locked mic / camera / screen sharing; honour it before the controls are enabled.
         var mine = metaOf(room.localParticipant);
         if (!amMod && mine.micAllowed === false) micAllowed = false;
         if (!amMod && mine.camAllowed === false) camAllowed = false;
+        if (!amMod && mine.shareAllowed === false) shareAllowed = false;
         tile(room.localParticipant);
         room.remoteParticipants.forEach(function (p) {
           tile(p);
           p.trackPublications.forEach(function (pub) { if (pub.track) attach(pub.track, p, pub); });
         });
-        syncSubscriptions();
-        setStatus((amMod ? 'Connected as moderator' : 'Connected as listener') + ' · ' + Object.keys(tiles).length + ' in room', 'live');
+        layoutGrid();             // choose the cards now, so video for them starts straight away
         syncMyMeta();
         renderModControls();
         document.dispatchEvent(new CustomEvent('wdos:lobby'));   // resync the guest list now that we are live
@@ -745,27 +922,70 @@
         cam.disabled = !camAllowed;
         if (!micAllowed) setLabel(speak, 'Mic locked by host');
         if (!camAllowed) setLabel(cam, 'Video locked by host');
-        if (!micAllowed || !camAllowed) showMediaToast('You joined muted \u2014 the host will allow your mic and video when needed');
-        if (shareBtn) shareBtn.disabled = !camAllowed && !amMod;
+        if (!micAllowed || !camAllowed || !shareAllowed) showMediaToast('You joined muted \u2014 the host will allow your mic, video or screen when needed');
+        renderShareBtn();
         if (handBtn) handBtn.disabled = false;
         renderHands();
-      });
-    }).catch(function (e) { setStatus('Could not connect: ' + (e.message || e), 'error'); });
+        setInterval(scheduleLayout, 3000);    // safety net: pick up camera on/off changes even if an event was missed
+      });    }).catch(function (e) { setStatus('Could not connect: ' + (e.message || e), 'error'); });
 
   var allowAllBtn = $('mod-allow-all-btn'), muteAllBtn = $('mod-mute-all-btn'), leaveBtn = $('leave');
   var leavingVoluntarily = false, exitedRoom = false;
-  function exitRoomAsRemoved() {
+
+  // Leave the room page for good. `why` is shown on the page we land on: 'removed' (the host removed me, or the connection
+  // was lost) or 'ended' (the host ended the meeting for everyone).
+  function exitRoom(why) {
     if (exitedRoom) return;
     exitedRoom = true;
     leavingVoluntarily = true;
     if (room) { try { room.disconnect(); } catch (e) {} }
     var href = (leaveBtn && leaveBtn.getAttribute('href')) || '/';
     var sep = href.indexOf('?') === -1 ? '?' : '&';
-    location.replace(href + sep + 'removed=1');
+    location.replace(href + sep + (why === 'ended' ? 'ended=1' : 'removed=1'));
   }
+
+  // Moderators: "Leave" opens a choice (leave, or end the meeting for everyone). Everyone else just leaves.
+  var leaveDlg = $('leave-dialog'), endBtn = $('end-for-all'), leaveOnly = $('leave-only');
+  function closeLeaveDialog() {
+    if (!leaveDlg) return;
+    leaveDlg.hidden = true;
+    if (leaveBtn) leaveBtn.focus();
+  }
+  function openLeaveDialog() {
+    var n = everyone().length - 1;
+    var c = $('leave-count'); if (c) c.textContent = n > 0 ? String(n) : 'no one else';
+    var w = $('leave-count-word'); if (w) w.hidden = n <= 0;
+    leaveDlg.hidden = false;
+    if (leaveOnly) leaveOnly.focus();
+  }
+  if (leaveDlg) {
+    leaveDlg.querySelectorAll('[data-leave-close]').forEach(function (b) { b.addEventListener('click', closeLeaveDialog); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !leaveDlg.hidden) closeLeaveDialog(); });
+    if (leaveOnly) leaveOnly.addEventListener('click', function () { leavingVoluntarily = true; if (room) room.disconnect(); });
+    if (endBtn) endBtn.addEventListener('click', function () {
+      var label = endBtn.querySelector('strong'), was = label ? label.textContent : '';
+      endBtn.disabled = true;
+      if (label) label.textContent = 'Ending the meeting\u2026';
+      var fd = new FormData();
+      fd.append('csrfmiddlewaretoken', csrf);
+      fetch(endBtn.dataset.url, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'x-requested-with': 'fetch' } })
+        .then(function (r) { if (!r.ok) throw new Error('end'); exitRoom('ended'); })
+        .catch(function () {
+          endBtn.disabled = false;
+          if (label) label.textContent = was;
+          closeLeaveDialog();
+          showMediaToast('Could not end the meeting \u2014 please try again');
+        });
+    });
+  }
+
   if (allowAllBtn) allowAllBtn.addEventListener('click', function () { sendMediaCtrl('*', { mic: true, cam: true }); });
-  if (muteAllBtn) muteAllBtn.addEventListener('click', function () { sendMediaCtrl('*', { mic: false, cam: false }); });
-  if (leaveBtn) leaveBtn.addEventListener('click', function () { leavingVoluntarily = true; if (room) room.disconnect(); });
+  if (muteAllBtn) muteAllBtn.addEventListener('click', function () { sendMediaCtrl('*', { mic: false, cam: false, share: false }); });
+  if (leaveBtn) leaveBtn.addEventListener('click', function (e) {
+    if (leaveDlg) { e.preventDefault(); openLeaveDialog(); return; }
+    leavingVoluntarily = true;
+    if (room) room.disconnect();
+  });
 
   var prejoinPrefs = {};
   try { prejoinPrefs = JSON.parse(sessionStorage.getItem('wdos_prejoin_prefs') || '{}'); } catch (e) {}

@@ -103,8 +103,13 @@ def detail_view(request, pk):
     if (g := _guard(request)):
         return g
     m = _get(request, pk)
-    if request.GET.get('removed') == '1':
-        messages.warning(request, 'You were removed from the meeting room by the host.')
+    if request.GET.get('ended') == '1':
+        messages.success(request, 'The meeting has ended for everyone.')
+    elif request.GET.get('removed') == '1':
+        if m.status == 'completed':
+            messages.info(request, 'The host ended the meeting.')
+        else:
+            messages.warning(request, 'You were removed from the meeting room by the host.')
     mgr = access.is_manager(request.user, m)
     people = access.invitees(m).order_by('last_name', 'first_name')[:300] if mgr else []
     marks = {a.profile_id: a.present for a in m.attendance_records.all()}
@@ -187,6 +192,49 @@ def close_view(request, pk):
     m.status = 'completed'
     m.save()
     return redirect('meetings:detail', pk=pk)
+
+
+@login_required
+@require_POST
+def control_view(request, pk):
+    """A moderator's command for people in the live room: allow or lock mic / camera / screen sharing, lower a raised hand, or
+    remove someone. It is sent from the server (after checking the caller manages this meeting), and browsers only obey
+    commands that come from the server, so a participant cannot forge one over the room's data channel."""
+    m = _manager_only(request, pk)
+    target = request.POST.get('target', '').strip()
+    if not target:
+        return JsonResponse({'error': 'Choose who this is for.'}, status=400)
+    if request.POST.get('kick') == '1':
+        if target == '*':
+            return JsonResponse({'error': 'Remove people one at a time.'}, status=400)
+        livekit.remove_participant(m, target)     # tells them why, then disconnects them
+        return JsonResponse({'ok': True})
+    payload = {'target': target}
+    for key in ('mic', 'cam', 'share'):
+        value = request.POST.get(key)
+        if value in ('0', '1'):
+            payload[key] = value == '1'
+    if request.POST.get('lowerHand') == '1':
+        payload['lowerHand'] = True
+    if len(payload) == 1:
+        return JsonResponse({'error': 'Nothing to change.'}, status=400)
+    livekit.push(livekit.room_name(m), 'wdos_media_ctrl', payload, None if target == '*' else [target])
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def end_view(request, pk):
+    """Host ends the meeting for everyone: the room closes, everyone in it is disconnected, nobody can rejoin.
+    The meeting is marked completed so the host can still write the minutes afterwards."""
+    m = _manager_only(request, pk)
+    if m.status not in ('completed', 'cancelled'):
+        m.status = 'completed'
+        m.save(update_fields=['status', 'updated_at'])
+    livekit.end_room(m)
+    if request.headers.get('x-requested-with') == 'fetch':
+        return JsonResponse({'ok': True})
+    return redirect(f"{redirect('meetings:detail', pk=pk).url}?ended=1")
 
 
 @login_required

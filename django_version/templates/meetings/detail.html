@@ -142,7 +142,7 @@
 
       {% if mgr %}{% include 'meetings/_guest_panel.html' %}{% endif %}
 
-      {% if m.minutes %}
+      {% if m.minutes and not mgr %}
       <section class="panel rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
         <div class="panelhead flex items-center gap-2.5 pb-3 mb-3 border-b border-slate-100">
           <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
@@ -154,7 +154,7 @@
       </section>
       {% endif %}
 
-      {% if mgr and m.status != 'completed' and m.status != 'cancelled' %}
+      {% if mgr and m.status != 'cancelled' %}
       <section class="panel rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
         <div class="panelhead flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100">
           <div class="flex items-center gap-2.5">
@@ -162,7 +162,7 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </span>
             <div>
-              <h2 class="text-base font-extrabold text-slate-900 leading-tight">Close Meeting &amp; Record Minutes</h2>
+              <h2 class="text-base font-extrabold text-slate-900 leading-tight">{% if m.status == 'completed' %}Meeting Minutes{% else %}Close Meeting &amp; Record Minutes{% endif %}</h2>
               <p class="text-xs text-slate-500 mt-0.5">Review decisions and action items, or generate a draft directly from the live transcript.</p>
             </div>
           </div>
@@ -209,7 +209,7 @@
           {% csrf_token %}
           <textarea class="minutes w-full rounded-xl border border-slate-300 bg-slate-50/40 p-3.5 text-sm text-slate-800 leading-relaxed focus:border-woddi-600 focus:bg-white focus:outline-none" name="minutes" rows="7" maxlength="8000" placeholder="Minutes: key decisions, summary, and assigned action items...">{{ minutes_text }}</textarea>
           <div class="flex justify-end">
-            <button class="btn primary rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm" type="submit">Save minutes and mark completed</button>
+            <button class="btn primary rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm" type="submit">{% if m.status == 'completed' %}Save minutes{% else %}Save minutes and mark completed{% endif %}</button>
           </div>
         </form>
       </section>

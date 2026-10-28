@@ -31,6 +31,7 @@
 
   function apply(status) {
     if (status === 'admitted') { if (lobby) lobby.disconnect(); location.href = roomUrl; }
+    else if (status === 'ended') { if (lobby) lobby.disconnect(); location.reload(); }   // host ended the meeting: the page now shows the ended notice
     else if (status === 'removed') {
       if (lobby) lobby.disconnect();
       msg.textContent = 'You were not admitted to this meeting.';

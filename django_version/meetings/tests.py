@@ -153,6 +153,109 @@ class RoomTests(MeetingsFlow):
             self.assertNotIn('micAllowed', meta(self.member))
 
 
+    def test_host_commands_are_sent_by_the_server_and_only_for_moderators(self):
+        from unittest import mock
+        m = self._meeting()
+        control = reverse('meetings:control', args=[m.pk])
+        room = f'meeting-{m.pk}'
+        # a plain member cannot issue commands
+        self.client.force_login(self.member)
+        self.assertEqual(self.client.post(control, {'target': 'x', 'mic': '0'}).status_code, 404)
+        self.client.force_login(self.hq)
+        with mock.patch('meetings.livekit.push') as push, mock.patch('meetings.livekit.remove_participant') as kick:
+            # allow / lock one person: mic, camera and screen share are separate permissions
+            r = self.client.post(control, {'target': str(self.member.pk), 'mic': '1', 'share': '0'})
+            self.assertEqual(r.status_code, 200)
+            push.assert_called_once_with(room, 'wdos_media_ctrl', {'target': str(self.member.pk), 'mic': True, 'share': False},
+                                         [str(self.member.pk)])
+            # mute and lock everyone at once: no destination list
+            push.reset_mock()
+            self.client.post(control, {'target': '*', 'mic': '0', 'cam': '0', 'share': '0'})
+            push.assert_called_once_with(room, 'wdos_media_ctrl', {'target': '*', 'mic': False, 'cam': False, 'share': False}, None)
+            # lower a hand
+            push.reset_mock()
+            self.client.post(control, {'target': 'abc', 'lowerHand': '1'})
+            self.assertEqual(push.call_args.args[2], {'target': 'abc', 'lowerHand': True})
+            # remove one person (never everyone at once)
+            self.client.post(control, {'target': str(self.member.pk), 'kick': '1'})
+            kick.assert_called_once_with(m, str(self.member.pk))
+            self.assertEqual(self.client.post(control, {'target': '*', 'kick': '1'}).status_code, 400)
+            # nothing to do / no target
+            self.assertEqual(self.client.post(control, {'target': 'abc'}).status_code, 400)
+            self.assertEqual(self.client.post(control, {'mic': '1'}).status_code, 400)
+
+    def test_host_ends_the_meeting_for_everyone(self):
+        from unittest import mock
+        from django.test import override_settings
+        m = self._meeting()
+        end = reverse('meetings:end', args=[m.pk])
+        self.client.force_login(self.member)
+        with mock.patch('meetings.livekit.end_room') as end_room:
+            self.assertEqual(self.client.post(end).status_code, 404)           # only a moderator can end it
+            end_room.assert_not_called()
+        self.client.force_login(self.hq)
+        with mock.patch('meetings.livekit.end_room') as end_room:
+            r = self.client.post(end, HTTP_X_REQUESTED_WITH='fetch')
+            self.assertEqual(r.json(), {'ok': True})
+            end_room.assert_called_once_with(m)
+        m.refresh_from_db()
+        self.assertEqual(m.status, 'completed')
+        # nobody can get back in
+        with override_settings(LIVEKIT_URL='wss://x.livekit.cloud', LIVEKIT_API_KEY='k', LIVEKIT_API_SECRET='s' * 40):
+            self.assertEqual(self.client.get(reverse('meetings:token', args=[m.pk])).status_code, 403)
+            self.client.force_login(self.member)
+            self.assertEqual(self.client.get(reverse('meetings:token', args=[m.pk])).status_code, 403)
+            self.assertEqual(self.client.get(reverse('meetings:room', args=[m.pk])).status_code, 302)
+        # the host lands on the meeting page with a clear message, and can still write the minutes
+        self.client.force_login(self.hq)
+        page = self.client.get(reverse('meetings:detail', args=[m.pk]) + '?ended=1')
+        self.assertContains(page, 'The meeting has ended for everyone')
+        self.assertContains(page, 'Meeting Minutes')
+        self.assertContains(page, 'name="minutes"')
+        # a participant who was dropped by the ending is told the host ended it (not that they were removed)
+        self.client.force_login(self.member)
+        self.assertContains(self.client.get(reverse('meetings:detail', args=[m.pk]) + '?removed=1'), 'The host ended the meeting')
+
+    def test_ending_without_the_video_service_still_closes_the_meeting(self):
+        from django.test import override_settings
+        m = self._meeting()
+        self.client.force_login(self.hq)
+        with override_settings(LIVEKIT_URL='', LIVEKIT_API_KEY='', LIVEKIT_API_SECRET=''):
+            self.client.post(reverse('meetings:end', args=[m.pk]))
+        m.refresh_from_db()
+        self.assertEqual(m.status, 'completed')
+
+    def test_room_page_has_search_cards_and_end_for_all_for_the_host_only(self):
+        from django.test import override_settings
+        m = self._meeting()
+        with override_settings(LIVEKIT_URL='wss://x.livekit.cloud', LIVEKIT_API_KEY='k', LIVEKIT_API_SECRET='s' * 40):
+            self.client.force_login(self.hq)
+            host = self.client.get(reverse('meetings:room', args=[m.pk]))
+            self.client.force_login(self.member)
+            member = self.client.get(reverse('meetings:room', args=[m.pk]))
+        for needle in ('id="pl-search"', 'id="live-participants-list"', 'id="seg-access"', 'id="leave-dialog"', 'id="end-for-all"',
+                       'data-control-url=', 'id="stage-more"', 'id="mod-mute-all-btn"'):
+            self.assertContains(host, needle)
+            if needle == 'id="stage-more"':
+                self.assertContains(member, needle)           # the "showing 6 of N" chip is for everyone
+            else:
+                self.assertNotContains(member, needle)        # search, permissions and ending are moderator-only
+
+    def test_join_muted_also_locks_screen_sharing(self):
+        import json
+        import jwt
+        from django.test import override_settings
+        m = self._meeting(mute_on_entry=True)
+        with override_settings(LIVEKIT_URL='wss://x.livekit.cloud', LIVEKIT_API_KEY='k', LIVEKIT_API_SECRET='s' * 40):
+            self.client.force_login(self.member)
+            tok = self.client.get(reverse('meetings:token', args=[m.pk])).json()['token']
+            mine = json.loads(jwt.decode(tok, 's' * 40, algorithms=['HS256'])['metadata'])
+            self.assertEqual((mine['micAllowed'], mine['camAllowed'], mine['shareAllowed']), (False, False, False))
+            self.client.force_login(self.hq)
+            tok = self.client.get(reverse('meetings:token', args=[m.pk])).json()['token']
+            self.assertNotIn('shareAllowed', json.loads(jwt.decode(tok, 's' * 40, algorithms=['HS256'])['metadata']))
+
+
 class TranslationLogic(MeetingsFlow):
     def test_targets_and_packets(self):
         import json
@@ -494,5 +597,46 @@ class InterpreterSupervisor(TestCase):
                 rooms.clear()                            # meeting closed: its bot is told to stop
                 await cmd.tick(running, None)
                 self.assertEqual(running, {})
+
+        asyncio.run(scenario())
+
+    def test_a_bot_replaced_by_another_instance_waits_instead_of_fighting_for_the_room(self):
+        import asyncio
+        from io import StringIO
+        from unittest import mock
+
+        from .management.commands import run_translation_agent as agent_cmd
+        from .translation.agent import Superseded
+
+        starts = []
+
+        class FakeBot:
+            def __init__(self, mid, name):
+                pass
+
+            async def run(self, stop):
+                starts.append(1)
+                raise Superseded('another interpreter took over')    # LiveKit: DuplicateIdentity
+
+        async def fake_open_rooms(only=None):
+            return {'m1': 'meeting-m1'}
+
+        async def scenario():
+            cmd = agent_cmd.Command()
+            cmd.stdout = StringIO()
+            running = {}
+            with mock.patch.object(agent_cmd, 'RoomBot', FakeBot), mock.patch.object(agent_cmd, 'open_rooms', fake_open_rooms):
+                await cmd.tick(running, None)
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+                for _ in range(5):                       # many polls while the other instance owns the room
+                    await cmd.tick(running, None)
+                    await asyncio.sleep(0)
+                self.assertEqual(len(starts), 1)          # never rejoined: no kick-out ping-pong
+                self.assertIn('replaced by another instance', cmd.stdout.getvalue())
+                cmd.cool['m1'] = 0                        # cooldown over
+                await cmd.tick(running, None)
+                await asyncio.sleep(0)
+                self.assertEqual(len(starts), 2)
 
         asyncio.run(scenario())
