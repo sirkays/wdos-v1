@@ -128,6 +128,9 @@ class Meeting(models.Model):
     guest_code = models.CharField(max_length=64, blank=True, default='', db_index=True)
     guest_auto_admit = models.BooleanField(default=False)
     passcode = models.CharField(max_length=32, blank=True, default='')
+    # When on, people who join the room (members and guests, not the host/moderators) start with mic and camera locked
+    # until a moderator allows them.
+    mute_on_entry = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 

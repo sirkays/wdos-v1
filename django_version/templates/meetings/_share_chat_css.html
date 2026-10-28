@@ -103,4 +103,50 @@
     .meet-stage.has-screen .room-grid { height: 92px !important; min-height: 92px; max-height: 92px; flex-basis: 92px; grid-auto-columns: 132px !important; }
     .meet-stage.has-screen .live-cc-overlay { bottom: 112px; }
   }
+
+  /* ---------- Raise hand ---------- */
+  .tile-hand {
+    position: absolute; top: 10px; right: 10px; z-index: 4; width: 34px; height: 34px; border-radius: 50%;
+    background: #f59e0b; color: #1c1100; display: none; align-items: center; justify-content: center; font-size: 17px; line-height: 1;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.45); animation: handWave 1.4s ease-in-out infinite; transform-origin: 70% 80%;
+  }
+  .tile.hand-up .tile-hand { display: inline-flex; }
+  .tile.hand-up { border-color: #f59e0b; }
+  .tile.hand-up .tile-wave { right: 52px; }
+  .meet-stage.has-screen .tile-hand { width: 24px; height: 24px; font-size: 13px; top: 6px; right: 6px; }
+  @keyframes handWave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 75% { transform: rotate(-12deg); } }
+  .meet-controls .btn#hand { font-size: 18px !important; line-height: 1; }
+  .meet-controls .btn#hand:disabled { opacity: 0.45; cursor: not-allowed !important; }
+  .meet-controls .btn#hand.on { background: #f59e0b !important; border-color: #fbbf24 !important; color: #1c1100 !important; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.25) !important; }
+  .more-action-card.hand-on { background: rgba(245, 158, 11, 0.16); border-color: rgba(251, 191, 36, 0.5); }
+  .more-action-card.hand-on .more-action-icon { background: rgba(245, 158, 11, 0.3); }
+  .more-action-icon.emoji { font-size: 18px; }
+  @media (max-width: 640px) { .meet-controls .btn#hand { display: none !important; } }   /* phones use the More sheet */
+
+  /* ---------- Host participant list: stacked rows so nothing overflows the narrow side panel ---------- */
+  #live-participants-panel { min-width: 0; max-width: 100%; }
+  #live-participants-list { min-width: 0; }
+  #live-participants-list li {
+    flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px; padding: 12px 0; min-width: 0;
+  }
+  #live-participants-list li.hand-up { background: rgba(245, 158, 11, 0.07); border-radius: 10px; padding: 12px 8px; }
+  .pl-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .pl-name { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 700; color: #f1f5f9; overflow-wrap: anywhere; line-height: 1.3; }
+  .pl-lang {
+    flex-shrink: 0; font-size: 10px; font-weight: 800; letter-spacing: 0.05em; color: #cbd5e1; padding: 2px 7px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .pl-hand-chip {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 999px; cursor: pointer;
+    border: 1px solid rgba(251, 191, 36, 0.55); background: rgba(245, 158, 11, 0.2); color: #fde68a; font-size: 11px; font-weight: 750;
+  }
+  .pl-hand-chip:hover { background: rgba(245, 158, 11, 0.32); }
+  .pl-remove {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    border: 1px solid rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.12); color: #fca5a5; padding: 0;
+  }
+  .pl-remove:hover { background: rgba(239, 68, 68, 0.3); color: #fff; }
+  .pl-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .pl-actions .mod-ctrl-btn { width: 100%; justify-content: center; height: 30px; }
+  .tile-mod-bar { flex-wrap: wrap; max-width: calc(100% - 64px); }
 </style>

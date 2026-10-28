@@ -13,15 +13,21 @@ def room_name(meeting):
     return f'meeting-{meeting.pk}'
 
 
+def _entry_meta(meeting, moderator):
+    """Meetings set to 'join muted': everyone except moderators starts with mic and camera locked (room.js reads this)."""
+    return {'micAllowed': False, 'camAllowed': False} if (meeting.mute_on_entry and not moderator) else {}
+
+
 def make_token(user, meeting, moderator, language='en'):
     """Everyone may publish and subscribe (they join muted, as listeners). Moderators are room admins."""
     from livekit import api
     grants = api.VideoGrants(room_join=True, room=room_name(meeting), can_publish=True, can_subscribe=True,
                              can_publish_data=True, can_update_own_metadata=True,
                              room_admin=bool(moderator))
+    meta = {'lang': language, 'moderator': bool(moderator), **_entry_meta(meeting, moderator)}
     return (api.AccessToken(settings.LIVEKIT_API_KEY, settings.LIVEKIT_API_SECRET)
             .with_identity(str(user.pk)).with_name(user.full_name or user.email)
-            .with_metadata(json.dumps({'lang': language, 'moderator': bool(moderator)}))
+            .with_metadata(json.dumps(meta))
             .with_grants(grants).with_ttl(timedelta(hours=3)).to_jwt())
 
 
@@ -32,9 +38,10 @@ def make_guest_token(guest, meeting):
     from livekit import api
     grants = api.VideoGrants(room_join=True, room=room_name(meeting), can_publish=True, can_subscribe=True,
                              can_publish_data=True, can_update_own_metadata=True)
+    meta = {'lang': guest.lang, 'moderator': False, 'guest': True, **_entry_meta(meeting, False)}
     return (api.AccessToken(settings.LIVEKIT_API_KEY, settings.LIVEKIT_API_SECRET)
             .with_identity(guest.identity).with_name(f'{guest.name} (Guest)')
-            .with_metadata(json.dumps({'lang': guest.lang, 'moderator': False, 'guest': True}))
+            .with_metadata(json.dumps(meta))
             .with_grants(grants).with_ttl(timedelta(hours=3)).to_jwt())
 
 

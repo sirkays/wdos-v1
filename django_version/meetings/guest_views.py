@@ -164,18 +164,6 @@ def lobby_token_view(request, code):
     return JsonResponse({'url': livekit.settings.LIVEKIT_URL, 'token': livekit.make_lobby_token(g, m)})
 
 
-@require_POST
-def language_view(request, code):
-    m = _meeting(code)
-    g = _guest(request, m)
-    lang = request.POST.get('lang', '')
-    if not g or lang not in dict(LANGS):
-        return JsonResponse({'error': 'Not allowed.'}, status=400)
-    g.lang = lang
-    g.save(update_fields=['lang'])
-    return JsonResponse({'ok': True})
-
-
 # ---- host / moderator tools (members only) ---------------------------------
 @login_required
 def guests_json_view(request, pk):
@@ -209,7 +197,7 @@ def guest_action_view(request, pk, gid, action):
 @login_required
 @require_POST
 def guest_link_view(request, pk):
-    """Turn guest access on/off, regenerate the link, flip auto-admit, or manage room passcode."""
+    """Turn guest access on/off, regenerate the link, flip auto-admit, manage the room passcode, or set 'join muted'."""
     import secrets
     m = _manager_only(request, pk)
     act = request.POST.get('action')
@@ -224,6 +212,8 @@ def guest_link_view(request, pk):
             livekit.notify_guest(m, g, 'removed')
     elif act in ('auto_on', 'auto_off'):
         m.guest_auto_admit = act == 'auto_on'
+    elif act in ('mute_entry_on', 'mute_entry_off'):
+        m.mute_on_entry = act == 'mute_entry_on'
     elif act in ('passcode_on', 'passcode_regen'):
         custom = request.POST.get('passcode', '').strip()[:32]
         m.passcode = custom if (act == 'passcode_on' and custom) else f'{secrets.randbelow(900000) + 100000}'
@@ -233,4 +223,6 @@ def guest_link_view(request, pk):
     elif act == 'passcode_off':
         m.passcode = ''
     m.save()
+    if request.headers.get('x-requested-with') == 'fetch':      # the in-room switch toggles without leaving the call
+        return JsonResponse({'ok': True, 'mute_on_entry': m.mute_on_entry})
     return redirect('meetings:detail', pk=pk)

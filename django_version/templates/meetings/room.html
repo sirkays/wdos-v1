@@ -883,58 +883,6 @@
     color: #ffffff !important;
   }
 
-  /* Integrated Interpretation Language Pill */
-  .meet-lang-pill {
-    height: 44px;
-    padding: 0 14px 0 15px;
-    border-radius: 999px;
-    background: #282c37;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 650;
-    color: #cbd5e1;
-    white-space: nowrap;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    transition: border-color 0.15s ease, background 0.15s ease;
-  }
-  .meet-lang-pill:hover {
-    background: #303543;
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-  .meet-lang-pill .lang-label {
-    color: #94a3b8;
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .meet-lang-pill select {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    width: auto !important;
-    min-width: 0 !important;
-    background-color: transparent !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 2px center !important;
-    background-size: 14px 14px !important;
-    border: 0 !important;
-    color: #ffffff !important;
-    font: inherit !important;
-    font-size: 13px !important;
-    font-weight: 750 !important;
-    padding: 2px 20px 2px 2px !important;
-    margin: 0 !important;
-    cursor: pointer !important;
-    outline: none !important;
-    box-shadow: none !important;
-  }
-  .meet-lang-pill select option {
-    background: #1e222d;
-    color: #ffffff;
-  }
 
   /* Google Meet Red End-Call Pill */
   .meet-controls .btn.danger {
@@ -1117,61 +1065,6 @@
   .interp-switch-track i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.18s ease; }
   .interp-switch.active .interp-switch-track { background: #d4006a; }
   .interp-switch.active .interp-switch-track i { transform: translateX(18px); }
-  .more-lang-pills.is-off { opacity: 0.5; }
-  .meet-lang-pill select.interp-off { text-decoration: line-through; opacity: 0.7; }
-  .more-lang-section {
-    background: rgba(15, 18, 24, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 15px;
-    padding: 11px 12px;
-  }
-  .more-lang-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-  .more-lang-header-title {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 11.5px;
-    font-weight: 750;
-    color: #e2e8f0;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .more-lang-pills {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 7px;
-  }
-  .more-lang-option {
-    height: 36px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: #252936;
-    color: #cbd5e1;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: all 0.15s ease;
-  }
-  .more-lang-option:hover {
-    background: #2f3545;
-    color: #ffffff;
-  }
-  .more-lang-option.active {
-    background: linear-gradient(135deg, #d4006a, #9d174d);
-    border-color: #ff80bf;
-    color: #ffffff;
-    box-shadow: 0 4px 14px rgba(212, 0, 106, 0.35);
-  }
 
   /* =========================================================
      Tablet & Mobile Responsive Rules
@@ -1322,8 +1215,7 @@
       border-radius: 999px !important;
     }
     .meet-controls .ctrl-divider { display: none; }
-    /* Move inline language dropdown and right dock buttons into the 3-dot More sheet on mobile */
-    .meet-lang-pill { display: none !important; }
+    /* Right dock buttons move into the 3-dot More sheet on mobile */
     .meet-dock-right { display: none !important; }
 
     .meet-controls .btn {
@@ -1516,6 +1408,14 @@
         <span class="chat-count" data-chat-badge hidden>0</span>
       </button>
 
+      <button type="button" class="more-action-card" id="more-hand" data-hand-toggle aria-pressed="false">
+        <span class="more-action-icon emoji" aria-hidden="true">&#9995;</span>
+        <span class="more-action-meta">
+          <strong>Raise hand</strong>
+          <span data-hand-state>Let the host know you want to speak</span>
+        </span>
+      </button>
+
       <button type="button" class="more-action-card" data-share-toggle data-share-control hidden>
         <span class="more-action-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
@@ -1569,7 +1469,6 @@
       </button>
     </div>
 
-    <div class="more-lang-section">
     <button type="button" class="interp-switch" data-interp-toggle aria-pressed="true">
       <span class="interp-switch-text">
         <strong>Live interpretation</strong>
@@ -1577,20 +1476,6 @@
       </span>
       <span class="interp-switch-track" aria-hidden="true"><i></i></span>
     </button>
-      <div class="more-lang-header">
-        <span class="more-lang-header-title">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff80bf" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          I hear audio &amp; captions in
-        </span>
-      </div>
-      <div class="more-lang-pills" id="more-lang-pills">
-        {% for c,n in langs %}
-        <button type="button" class="more-lang-option {% if c == my_lang %}active{% endif %}" data-lang-pick="{{ c }}">
-          <span>{{ n }}</span>
-        </button>
-        {% endfor %}
-      </div>
-    </div>
   </section>
 
   <!-- Bottom Google Meet / Zoom Control Bar -->
@@ -1611,16 +1496,13 @@
         <span class="btn-label">Camera on</span>
       </button>
 
-      <label class="meet-lang-pill" for="lang" title="Select your interpretation listening language">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff80bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        <span class="lang-label">I hear in</span>
-        <select id="lang">{% for c,n in langs %}<option value="{{ c }}" {% if c == my_lang %}selected{% endif %}>{{ n }}</option>{% endfor %}</select>
-      </label>
 
       <button class="btn" id="share" type="button" disabled hidden title="Present your screen" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         <span class="btn-label">Share</span>
       </button>
+
+      <button class="btn btn-circle" id="hand" type="button" disabled title="Raise your hand" aria-label="Raise your hand" aria-pressed="false">&#9995;</button>
 
       <button class="btn btn-circle" id="more-options-btn" type="button" title="More options" aria-label="More options" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/></svg>
@@ -1658,7 +1540,7 @@
 </div>
 
 <audio id="sink" autoplay></audio>
-<div id="cfg" data-token="{% url 'meetings:token' m.pk %}" data-lang-url="{% url 'meetings:language' %}" data-ready="{% if missing %}0{% else %}1{% endif %}">{% csrf_token %}</div>
+<div id="cfg" data-token="{% url 'meetings:token' m.pk %}" data-lang-name="{% for c,n in langs %}{% if c == my_lang %}{{ n }}{% endif %}{% endfor %}" data-ready="{% if missing %}0{% else %}1{% endif %}">{% csrf_token %}<input type="hidden" id="lang" value="{{ my_lang }}"></div>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -1696,8 +1578,6 @@
   var moreWaitingBadge = document.getElementById('more-waiting-badge');
   var waitingBadge = document.getElementById('waiting-badge');
   var liveCcOverlay = document.getElementById('live-cc-overlay');
-  var langSelect = document.getElementById('lang');
-  var langPills = document.querySelectorAll('[data-lang-pick]');
 
   function closeMoreSheet() {
     if (!moreSheet) return;
@@ -1813,28 +1693,6 @@
     closeMoreSheet();
   });
 
-  // Sync language pills inside More sheet with #lang select
-  function syncLangPills(val) {
-    langPills.forEach(function (btn) {
-      btn.classList.toggle('active', btn.getAttribute('data-lang-pick') === val);
-    });
-  }
-  langPills.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var code = btn.getAttribute('data-lang-pick');
-      if (langSelect && code) {
-        langSelect.value = code;
-        langSelect.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-      syncLangPills(code);
-      closeMoreSheet();
-    });
-  });
-  if (langSelect) {
-    langSelect.addEventListener('change', function () {
-      syncLangPills(langSelect.value);
-    });
-  }
 
   // Keep More button notification dot synced with #waiting-badge
   if (waitingBadge && window.MutationObserver) {

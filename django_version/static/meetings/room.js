@@ -29,6 +29,7 @@
 
   var BOT = 'wdos-translator-bot', audio = [], amMod = false, micAllowed = true, camAllowed = true;
   var pPerms = {};   // identity -> { mic: bool, cam: bool }
+  var handUp = false, hands = {};   // raise hand: my own state, and who had a hand up last time we looked (for one toast per raise)
   var AVATAR_COLORS = [
     'linear-gradient(135deg, #d4006a 0%, #9b004e 100%)',
     'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -51,7 +52,7 @@
   function syncMyMeta() {
     if (!room || !room.localParticipant) return;
     room.localParticipant.setMetadata(JSON.stringify({
-      lang: myLang, moderator: amMod, micAllowed: micAllowed, camAllowed: camAllowed
+      lang: myLang, moderator: amMod, micAllowed: micAllowed, camAllowed: camAllowed, hand: handUp
     }));
   }
 
@@ -83,7 +84,7 @@
       };
     }
     var pkt = new TextEncoder().encode(JSON.stringify({
-      target: targetIdentity, mic: changes.mic, cam: changes.cam, kick: changes.kick
+      target: targetIdentity, mic: changes.mic, cam: changes.cam, kick: changes.kick, lowerHand: changes.lowerHand
     }));
     room.localParticipant.publishData(pkt, { reliable: true, topic: 'wdos_media_ctrl' });
     renderModControls();
@@ -158,42 +159,117 @@
       listEl.innerHTML = '<li class="ws-empty" style="color:#64748b !important;">No other participants in the room yet.</li>';
       return;
     }
+    // Raised hands first, so the host sees who wants to speak without scrolling.
+    remotes.sort(function (a, b) { return (hands[b.identity] ? 1 : 0) - (hands[a.identity] ? 1 : 0); });
     remotes.forEach(function (p) {
-      var prm = permOf(p);
+      var prm = permOf(p), up = !!hands[p.identity];
       var li = document.createElement('li');
-      var nm = document.createElement('span');
-      nm.className = 'font-semibold text-xs text-slate-200';
-      nm.textContent = (p.name || 'Participant') + ' (' + (langOf(p) || 'en').toUpperCase() + ')';
-      var acts = document.createElement('span');
-      acts.style.display = 'inline-flex';
-      acts.style.gap = '6px';
+      if (up) li.className = 'hand-up';
 
+      var head = document.createElement('div');
+      head.className = 'pl-head';
+      var nm = document.createElement('span');
+      nm.className = 'pl-name';
+      nm.textContent = p.name || 'Participant';
+      var lg = document.createElement('span');
+      lg.className = 'pl-lang';
+      lg.textContent = (langOf(p) || 'en').toUpperCase();
+      head.appendChild(nm);
+      head.appendChild(lg);
+      if (up) {
+        var hb = document.createElement('button');
+        hb.type = 'button';
+        hb.className = 'pl-hand-chip';
+        hb.title = 'Hand raised — click to lower it';
+        hb.textContent = '\u270B Lower';
+        hb.onclick = function () { sendMediaCtrl(p.identity, { lowerHand: true }); };
+        head.appendChild(hb);
+      }
+      var kb = document.createElement('button');
+      kb.type = 'button';
+      kb.className = 'pl-remove';
+      kb.title = 'Remove from the meeting';
+      kb.setAttribute('aria-label', 'Remove ' + (p.name || 'participant') + ' from the meeting');
+      kb.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      kb.onclick = function () { kickParticipant(p.identity); };
+      head.appendChild(kb);
+
+      var acts = document.createElement('div');
+      acts.className = 'pl-actions';
       var mBtn = document.createElement('button');
       mBtn.type = 'button';
       mBtn.className = 'mod-ctrl-btn ' + (prm.mic ? 'allowed' : 'locked');
-      mBtn.textContent = prm.mic ? 'Mic On/Allowed' : 'Allow Mic';
+      mBtn.textContent = prm.mic ? 'Mic allowed' : 'Mic locked';
+      mBtn.title = prm.mic ? 'Click to mute & lock microphone' : 'Click to allow microphone';
       mBtn.onclick = function () { sendMediaCtrl(p.identity, { mic: !prm.mic }); };
 
       var cBtn = document.createElement('button');
       cBtn.type = 'button';
       cBtn.className = 'mod-ctrl-btn ' + (prm.cam ? 'allowed' : 'locked');
-      cBtn.textContent = prm.cam ? 'Video Allowed' : 'Allow Video';
+      cBtn.textContent = prm.cam ? 'Video allowed' : 'Video locked';
+      cBtn.title = prm.cam ? 'Click to stop & lock camera' : 'Click to allow camera';
       cBtn.onclick = function () { sendMediaCtrl(p.identity, { cam: !prm.cam }); };
-
-      var kBtn = document.createElement('button');
-      kBtn.type = 'button';
-      kBtn.className = 'mod-ctrl-btn locked';
-      kBtn.textContent = 'Remove';
-      kBtn.onclick = function () { kickParticipant(p.identity); };
 
       acts.appendChild(mBtn);
       acts.appendChild(cBtn);
-      acts.appendChild(kBtn);
-      li.appendChild(nm);
+      li.appendChild(head);
       li.appendChild(acts);
       listEl.appendChild(li);
     });
   }
+
+  // ---- Raise hand -----------------------------------------------------------------------------------------
+  // The raised state travels in each person's signed participant metadata (like language), so late joiners see it too
+  // and nobody can raise a hand on someone else's behalf. The host can lower a hand with a command.
+  var handBtn = $('hand');
+
+  function renderHandControls() {
+    if (handBtn) {
+      handBtn.classList.toggle('on', handUp);
+      handBtn.setAttribute('aria-pressed', handUp ? 'true' : 'false');
+      handBtn.title = handUp ? 'Lower your hand' : 'Raise your hand';
+      handBtn.setAttribute('aria-label', handUp ? 'Lower your hand' : 'Raise your hand');
+    }
+    document.querySelectorAll('[data-hand-toggle]').forEach(function (b) {
+      b.classList.toggle('hand-on', handUp);
+      b.setAttribute('aria-pressed', handUp ? 'true' : 'false');
+      var st = b.querySelector('[data-hand-state]');
+      if (st) st.textContent = handUp ? 'Hand raised · tap to lower' : 'Let the host know you want to speak';
+      var ttl = b.querySelector('strong');
+      if (ttl) ttl.textContent = handUp ? 'Lower hand' : 'Raise hand';
+    });
+  }
+
+  function renderHands() {
+    if (!room || !room.localParticipant) return;
+    var people = [room.localParticipant];
+    room.remoteParticipants.forEach(function (p) { if (!isBot(p)) people.push(p); });
+    people.forEach(function (p) {
+      var up = p.isLocal ? handUp : !!metaOf(p).hand;
+      var d = tiles[p.identity];
+      if (d) d.classList.toggle('hand-up', up);
+      if (!p.isLocal && up && !hands[p.identity]) showMediaToast('\u270B ' + (p.name || 'A participant') + ' raised a hand');
+      hands[p.identity] = up;
+    });
+    renderModControls();
+  }
+
+  function setHand(on) {
+    handUp = !!on;
+    renderHandControls();
+    syncMyMeta();
+    renderHands();
+    if (handUp) showMediaToast('\u270B Hand raised \u2014 everyone can see it');
+  }
+
+  if (handBtn) handBtn.addEventListener('click', function () { setHand(!handUp); });
+  document.querySelectorAll('[data-hand-toggle]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      setHand(!handUp);
+      var closeMore = $('more-close-btn'); if (closeMore) closeMore.click();
+    });
+  });
+  renderHandControls();
 
   function initialsOf(name) {
     var parts = (name || '?').replace(/\(Guest\)/i, '').trim().split(/\s+/);
@@ -241,20 +317,17 @@
     return !(bot === undefined ? botHere() : bot) || langOf(p) === myLang;
   }
 
-  // Reflect the switch in every control that mirrors it (more-sheet toggle, language pills, language badge, desktop select).
+  // Reflect the switch in every control that mirrors it (more-sheet toggle, language badge). The listening language itself
+  // is fixed before joining (members: meeting page; guests: join page) and cannot be changed from inside the room.
+  var myLangName = cfg.dataset.langName || myLang.toUpperCase();
   function renderInterpUI() {
     document.querySelectorAll('[data-interp-toggle]').forEach(function (b) {
       b.classList.toggle('active', interpOn);
       b.setAttribute('aria-pressed', interpOn ? 'true' : 'false');
       var st = b.querySelector('[data-interp-state]');
-      if (st) st.textContent = interpOn ? 'On · hearing your language' : 'Off · hearing original voices';
+      if (st) st.textContent = interpOn ? 'On · hearing ' + myLangName : 'Off · hearing original voices';
     });
-    document.querySelectorAll('.more-lang-pills').forEach(function (w) { w.classList.toggle('is-off', !interpOn); });
-    var sel = $('lang'); if (sel) sel.classList.toggle('interp-off', !interpOn);
-    if (langBadge) {
-      var opt = sel && sel.options[sel.selectedIndex];
-      langBadge.textContent = interpOn ? (opt ? opt.text : myLang.toUpperCase()) : 'Original voice';
-    }
+    if (langBadge) langBadge.textContent = interpOn ? myLangName : 'Original voice';
   }
 
   function setInterp(on) {
@@ -472,6 +545,7 @@
     d._participant = p;
     d.innerHTML =
       '<div class="av-wrap"><span class="av"></span></div>' +
+      '<span class="tile-hand" aria-hidden="true" title="Hand raised">\u270B</span>' +
       '<span class="tile-wave" aria-hidden="true"><i></i><i></i><i></i></span>' +
       '<div class="tile-bar"><span class="nm"></span><span class="tile-lang"></span></div>';
     var av = d.querySelector('.av');
@@ -532,6 +606,7 @@
       tiles[p.identity].remove();
       delete tiles[p.identity];
       delete pPerms[p.identity];
+      delete hands[p.identity];
       syncGridCount();
       renderModControls();
     }
@@ -579,8 +654,8 @@
       room.on(L.RoomEvent.TrackSubscribed, function (tr, pub, p) { attach(tr, p, pub); })
           .on(L.RoomEvent.TrackUnsubscribed, function (tr, pub, p) { detach(tr, p); })
           .on(L.RoomEvent.TrackPublished, function () { syncSubscriptions(); })
-          .on(L.RoomEvent.ParticipantConnected, function (p) { tile(p); applyAudio(); })
-          .on(L.RoomEvent.ParticipantMetadataChanged, applyAudio)
+          .on(L.RoomEvent.ParticipantConnected, function (p) { tile(p); applyAudio(); renderHands(); })
+          .on(L.RoomEvent.ParticipantMetadataChanged, function () { applyAudio(); renderHands(); })
           .on(L.RoomEvent.ParticipantDisconnected, function (p) { remove(p); applyAudio(); })
           .on(L.RoomEvent.ActiveSpeakersChanged, function (sp) {
             Object.keys(tiles).forEach(function (k) { tiles[k].classList.remove('speaking'); });
@@ -598,6 +673,10 @@
                 if (cmd.kick && !amMod) {
                   exitRoomAsRemoved();
                   return;
+                }
+                if (cmd.lowerHand && handUp) {
+                  setHand(false);
+                  showMediaToast('The host lowered your hand');
                 }
                 if (cmd.mic !== undefined && !amMod) {
                   micAllowed = !!cmd.mic;
@@ -642,11 +721,16 @@
           .on(L.RoomEvent.Disconnected, function () {
             setStatus('Disconnected', 'offline');
             speak.disabled = cam.disabled = true;
+            if (handBtn) handBtn.disabled = true;
             if (!leavingVoluntarily) exitRoomAsRemoved();
           });
       // autoSubscribe off: we pick the tracks ourselves (see wantsAudio) so nobody downloads audio they should not hear
       return room.connect(t.url, t.token, { autoSubscribe: false }).then(function () {
         amMod = !!t.moderator;
+        // "Join muted": the server marks my token with locked mic/camera; honour it before the controls are enabled.
+        var mine = metaOf(room.localParticipant);
+        if (!amMod && mine.micAllowed === false) micAllowed = false;
+        if (!amMod && mine.camAllowed === false) camAllowed = false;
         tile(room.localParticipant);
         room.remoteParticipants.forEach(function (p) {
           tile(p);
@@ -659,7 +743,12 @@
         document.dispatchEvent(new CustomEvent('wdos:lobby'));   // resync the guest list now that we are live
         speak.disabled = !micAllowed;
         cam.disabled = !camAllowed;
+        if (!micAllowed) setLabel(speak, 'Mic locked by host');
+        if (!camAllowed) setLabel(cam, 'Video locked by host');
+        if (!micAllowed || !camAllowed) showMediaToast('You joined muted \u2014 the host will allow your mic and video when needed');
         if (shareBtn) shareBtn.disabled = !camAllowed && !amMod;
+        if (handBtn) handBtn.disabled = false;
+        renderHands();
       });
     }).catch(function (e) { setStatus('Could not connect: ' + (e.message || e), 'error'); });
 
@@ -721,15 +810,6 @@
     });
   }
   cam.addEventListener('click', function () { toggleCam(); });
-
-  $('lang').addEventListener('change', function () {
-    myLang = this.value;
-    renderInterpUI();
-    var fd = new FormData(); fd.append('lang', myLang); fd.append('csrfmiddlewaretoken', csrf);
-    fetch(cfg.dataset.langUrl, { method: 'POST', body: fd, credentials: 'same-origin' });
-    if (room) syncMyMeta();
-    applyAudio();
-  });
 
   document.querySelectorAll('[data-interp-toggle]').forEach(function (b) {
     b.addEventListener('click', function () { setInterp(!interpOn); });

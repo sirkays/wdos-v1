@@ -28,6 +28,21 @@
     </div>
   </div>
 
+  <!-- Join muted: one switch, shared by the detail page and the live room (same panel, same endpoint) -->
+  <div class="entry-mute flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 mb-5" id="entry-mute">
+    {% csrf_token %}
+    <div class="min-w-0">
+      <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-800">Join muted</h3>
+      <p class="text-xs text-slate-600 mt-1" id="entry-mute-text">
+        {% if m.mute_on_entry %}New participants enter with mic and camera locked until you allow them.{% else %}Let everyone speak and show video as soon as they join.{% endif %}
+      </p>
+      {% if room %}<p class="text-[11px] text-slate-500 mt-1">Applies to people who join after this. Use Mute All for those already here.</p>{% endif %}
+    </div>
+    <button type="button" class="mswitch{% if m.mute_on_entry %} on{% endif %}" id="entry-mute-switch" role="switch"
+            aria-checked="{{ m.mute_on_entry|yesno:'true,false' }}" aria-label="Mute participants when they join"
+            data-url="{% url 'meetings:guest_link' m.pk %}"><i></i></button>
+  </div>
+
   {% if not room %}
   <!-- Room Passcode Card (Detail Page) -->
   <div class="rounded-xl border {% if m.passcode %}border-amber-200/80 bg-amber-50/40{% else %}border-slate-200 bg-slate-50/60{% endif %} p-4 mb-5">
@@ -126,8 +141,37 @@
   </div>
   {% endif %}
 </section>
+<style>
+  .mswitch { position: relative; flex-shrink: 0; width: 46px; height: 26px; border-radius: 999px; border: 0; padding: 0; cursor: pointer; background: #cbd5e1; transition: background .18s ease; }
+  .mswitch i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .18s ease; }
+  .mswitch.on { background: #d4006a; }
+  .mswitch.on i { transform: translateX(20px); }
+  .mswitch:focus-visible { outline: 2px solid #d4006a; outline-offset: 2px; }
+  .mswitch[disabled] { opacity: .55; cursor: wait; }
+  .room-guest-panel #entry-mute p { color: #94a3b8 !important; }
+  .room-guest-panel #entry-mute .mswitch { background: #475569; }
+  .room-guest-panel #entry-mute .mswitch.on { background: #d4006a; }
+</style>
 <script>
 (function(){
+  var sw = document.getElementById('entry-mute-switch');
+  if (sw) {
+    var txt = document.getElementById('entry-mute-text'), csrf = document.querySelector('#entry-mute [name=csrfmiddlewaretoken]');
+    var ON = 'New participants enter with mic and camera locked until you allow them.', OFF = 'Let everyone speak and show video as soon as they join.';
+    function paint(on) { sw.classList.toggle('on', on); sw.setAttribute('aria-checked', on ? 'true' : 'false'); if (txt) txt.textContent = on ? ON : OFF; }
+    sw.addEventListener('click', function () {
+      var next = sw.getAttribute('aria-checked') !== 'true';
+      paint(next); sw.disabled = true;
+      var fd = new FormData();
+      fd.append('csrfmiddlewaretoken', csrf ? csrf.value : '');
+      fd.append('action', next ? 'mute_entry_on' : 'mute_entry_off');
+      fetch(sw.dataset.url, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'x-requested-with': 'fetch' } })
+        .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+        .then(function (d) { paint(!!d.mute_on_entry); })
+        .catch(function () { paint(!next); })
+        .then(function () { sw.disabled = false; });
+    });
+  }
   var pcopy = document.getElementById('pcopy');
   if (pcopy) {
     pcopy.addEventListener('click', function () {

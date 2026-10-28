@@ -8,7 +8,6 @@ urlpatterns = [
     path('workspace/meetings/new/', views.create_view, name='new'),
     path('workspace/meetings/<uuid:pk>/', views.detail_view, name='detail'),
     path('workspace/meetings/<uuid:pk>/join/', views.join_view, name='join'),
-    path('workspace/meetings/language/', views.language_view, name='language'),
     path('workspace/meetings/<uuid:pk>/room/', views.room_view, name='room'),
     path('workspace/meetings/<uuid:pk>/token/', views.token_view, name='token'),
     path('workspace/meetings/<uuid:pk>/transcript/', views.transcript_view, name='transcript'),
@@ -26,7 +25,6 @@ urlpatterns = [
     path('join/<str:code>/leave/', guest_views.leave_view, name='guest_leave'),
     path('join/<str:code>/room/', guest_views.room_view, name='guest_room'),
     path('join/<str:code>/token/', guest_views.token_view, name='guest_token'),
-    path('join/<str:code>/language/', guest_views.language_view, name='guest_language'),
     # host / moderator tools
     path('workspace/meetings/<uuid:pk>/guests/', guest_views.guests_json_view, name='guests'),
     path('workspace/meetings/<uuid:pk>/guests/<int:gid>/<str:action>/', guest_views.guest_action_view, name='guest_action'),

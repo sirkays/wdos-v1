@@ -88,6 +88,15 @@
         {% endif %}
         <form method="post" action="{% url 'meetings:join' m.pk %}" class="flex flex-wrap items-center gap-2">
           {% csrf_token %}
+          {% if m.platform == 'woddi' %}
+          <label class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-500" title="Chosen before you join; it can't be changed inside the room">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-woddi-600 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span>I hear in</span>
+            <select name="lang" aria-label="Language I want to hear the meeting in" class="bg-transparent text-sm font-bold text-slate-900 focus:outline-none cursor-pointer">
+              {% for c,n in langs %}<option value="{{ c }}" {% if c == my_lang %}selected{% endif %}>{{ n }}</option>{% endfor %}
+            </select>
+          </label>
+          {% endif %}
           {% if m.passcode and not passcode_unlocked %}
           <div class="relative">
             <input type="password" name="passcode" maxlength="32" required autocomplete="off" placeholder="Enter room passcode" aria-label="Room passcode" class="rounded-xl border border-amber-300 bg-amber-50/40 px-3.5 py-2.5 text-sm font-mono text-slate-900 placeholder:font-sans placeholder:text-slate-400 focus:border-woddi-600 focus:bg-white focus:outline-none w-48">

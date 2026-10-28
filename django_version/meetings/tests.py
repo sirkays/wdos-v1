@@ -103,15 +103,54 @@ class RoomTests(MeetingsFlow):
             self.client.force_login(self.member)
             page = self.client.get(reverse('meetings:room', args=[m.pk]))
         for needle in ('id="share"', 'id="screen-stage"', 'id="drawer-pane-chat"', 'id="chat-form"', 'id="dock-chat-btn"',
-                       'id="more-open-chat"'):
+                       'id="more-open-chat"', 'id="hand"', 'id="more-hand"'):
             self.assertContains(page, needle)
 
-    def test_language_saved(self):
+    def test_listening_language_is_chosen_before_joining_not_in_the_room(self):
+        from django.test import override_settings
+        m = self._meeting()
         self.client.force_login(self.member)
-        self.assertEqual(self.client.post(reverse('meetings:language'), {'lang': 'fr'}).status_code, 200)
+        # the meeting page offers the language choice and the join form saves it
+        self.assertContains(self.client.get(reverse('meetings:detail', args=[m.pk])), 'name="lang"')
+        self.client.post(reverse('meetings:join', args=[m.pk]), {'lang': 'fr'})
         self.member.refresh_from_db()
         self.assertEqual(self.member.preferred_locale, 'fr')
-        self.assertEqual(self.client.post(reverse('meetings:language'), {'lang': 'xx'}).status_code, 400)
+        self.client.post(reverse('meetings:join', args=[m.pk]), {'lang': 'xx'})   # unsupported: ignored
+        self.member.refresh_from_db()
+        self.assertEqual(self.member.preferred_locale, 'fr')
+        # inside the room there is no "I hear in" picker, no language pills, and no endpoint to change it
+        with override_settings(LIVEKIT_URL='wss://x.livekit.cloud', LIVEKIT_API_KEY='k', LIVEKIT_API_SECRET='s' * 40):
+            page = self.client.get(reverse('meetings:room', args=[m.pk]))
+        self.assertContains(page, 'data-interp-toggle')            # the live-interpretation on/off switch stays
+        for gone in ('I hear in', 'meet-lang-pill', 'data-lang-pick', 'more-lang-pills'):
+            self.assertNotContains(page, gone)
+        self.assertEqual(self.client.post('/workspace/meetings/language/', {'lang': 'en'}).status_code, 404)
+
+    def test_join_muted_locks_mic_and_camera_for_non_moderators(self):
+        import json
+        import jwt
+        from django.test import override_settings
+        m = self._meeting()
+        with override_settings(LIVEKIT_URL='wss://x.livekit.cloud', LIVEKIT_API_KEY='k', LIVEKIT_API_SECRET='s' * 40):
+            def meta(user):
+                self.client.force_login(user)
+                tok = self.client.get(reverse('meetings:token', args=[m.pk])).json()['token']
+                return json.loads(jwt.decode(tok, 's' * 40, algorithms=['HS256'])['metadata'])
+            self.assertNotIn('micAllowed', meta(self.member))                  # off by default
+            # only a manager can flip it, from the detail page or the room, without leaving the call
+            self.client.force_login(self.member)
+            self.assertEqual(self.client.post(reverse('meetings:guest_link', args=[m.pk]), {'action': 'mute_entry_on'}).status_code, 404)
+            self.client.force_login(self.hq)
+            r = self.client.post(reverse('meetings:guest_link', args=[m.pk]), {'action': 'mute_entry_on'}, HTTP_X_REQUESTED_WITH='fetch')
+            self.assertEqual(r.json(), {'ok': True, 'mute_on_entry': True})
+            self.assertContains(self.client.get(reverse('meetings:detail', args=[m.pk])), 'id="entry-mute-switch"')
+            self.assertContains(self.client.get(reverse('meetings:room', args=[m.pk])), 'id="entry-mute-switch"')
+            mm = meta(self.member)
+            self.assertEqual((mm['micAllowed'], mm['camAllowed']), (False, False))
+            self.assertNotIn('micAllowed', meta(self.hq))                      # the host is never locked out
+            self.client.force_login(self.hq)
+            self.client.post(reverse('meetings:guest_link', args=[m.pk]), {'action': 'mute_entry_off'})
+            self.assertNotIn('micAllowed', meta(self.member))
 
 
 class TranslationLogic(MeetingsFlow):
@@ -233,8 +272,26 @@ class GuestAccess(RoomTests):
         self.m.save()
         c, _ = self._join()
         page = c.get(reverse('meetings:guest_room', args=['abc123code']))
-        for needle in ('id="share"', 'id="screen-stage"', 'id="drawer-pane-chat"', 'id="tab-btn-chat"', 'id="more-open-chat"'):
+        for needle in ('id="share"', 'id="screen-stage"', 'id="drawer-pane-chat"', 'id="tab-btn-chat"', 'id="more-open-chat"',
+                       'id="hand"', 'id="more-hand"'):
             self.assertContains(page, needle)
+        for gone in ('I hear in', 'meet-lang-pill', 'data-lang-pick'):
+            self.assertNotContains(page, gone)
+
+    def test_guest_joins_muted_when_the_host_asks_for_it(self):
+        import json
+        import jwt
+        from django.test import override_settings
+        self.m.guest_auto_admit = True
+        self.m.mute_on_entry = True
+        self.m.save()
+        c, _ = self._join()
+        with override_settings(LIVEKIT_URL='wss://x.livekit.cloud', LIVEKIT_API_KEY='k', LIVEKIT_API_SECRET='s' * 40):
+            tok = c.get(reverse('meetings:guest_token', args=['abc123code'])).json()['token']
+        meta = json.loads(jwt.decode(tok, 's' * 40, algorithms=['HS256'])['metadata'])
+        self.assertEqual((meta['micAllowed'], meta['camAllowed'], meta['lang']), (False, False, 'fr'))
+        # the guest-side language endpoint is gone: the choice is made on the join page only
+        self.assertEqual(c.post('/join/abc123code/language/', {'lang': 'en'}).status_code, 404)
 
     def test_auto_admit_and_link_controls(self):
         from unittest import mock

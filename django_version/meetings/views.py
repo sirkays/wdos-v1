@@ -114,6 +114,7 @@ def detail_view(request, pk):
     return render(request, 'meetings/detail.html', _ctx(
         request, m=m, mgr=mgr, sheet=sheet, checkins=m.checkins.select_related('profile'),
         files=m.files.all(), joined_me=request.user.pk in joined,
+        langs=LANGS, my_lang=_my_lang(request.user),
         passcode_unlocked=_passcode_ok(request, m),
         draft_active=bool(mgr and request.GET.get('draft')),
         minutes_text=(draft_minutes(m, m.transcript.all(), [c.profile.full_name for c in m.checkins.select_related('profile')])
@@ -137,6 +138,11 @@ def join_view(request, pk):
             messages.error(request, 'Incorrect room passcode. Please enter the passcode provided by the host.')
             return redirect('meetings:detail', pk=pk)
     MeetingCheckin.objects.get_or_create(meeting=m, profile=request.user)
+    # The listening language is chosen here, before entering; it cannot be changed from inside the room.
+    lang = request.POST.get('lang', '')
+    if lang in dict(LANGS) and lang != request.user.preferred_locale:
+        request.user.preferred_locale = lang
+        request.user.save(update_fields=['preferred_locale'])
     if m.status == 'scheduled' and access.is_manager(request.user, m) and (m.platform != 'woddi' or _room_open(m)):
         m.status = 'in_progress'
         m.save(update_fields=['status', 'updated_at'])
@@ -220,6 +226,11 @@ LANGS = [
 ]
 
 
+def _my_lang(user):
+    """The member's listening language, limited to the room's supported set (falls back to English)."""
+    return user.preferred_locale if user.preferred_locale in dict(LANGS) else 'en'
+
+
 def _room_open(m):
     """Open from 15 minutes before the start until the meeting ends; never once completed or cancelled."""
     now = timezone.now()
@@ -251,7 +262,7 @@ def room_view(request, pk):
     MeetingCheckin.objects.get_or_create(meeting=m, profile=request.user)
     missing = livekit.missing_settings()
     return render(request, 'meetings/room.html', _ctx(
-        request, m=m, langs=LANGS, my_lang=request.user.preferred_locale, mgr=access.is_manager(request.user, m),
+        request, m=m, langs=LANGS, my_lang=_my_lang(request.user), mgr=access.is_manager(request.user, m),
         missing=missing if request.user.is_in_hq() else (['configuration'] if missing else [])))
 
 
@@ -265,20 +276,8 @@ def token_view(request, pk):
     if livekit.missing_settings():
         return JsonResponse({'error': 'The video service is not configured yet.'}, status=503)
     mod = access.is_manager(request.user, m)
-    token = livekit.make_token(request.user, m, mod, request.user.preferred_locale)
+    token = livekit.make_token(request.user, m, mod, _my_lang(request.user))
     return JsonResponse({'url': livekit.settings.LIVEKIT_URL, 'token': token, 'moderator': mod})
-
-
-@login_required
-@require_POST
-def language_view(request):
-    code = request.POST.get('lang', '')
-    if code not in dict(LANGS):
-        return JsonResponse({'error': 'Unknown language.'}, status=400)
-    request.user.preferred_locale = code
-    request.user.save(update_fields=['preferred_locale'])
-    return JsonResponse({'ok': True})
-
 
 
 @login_required
