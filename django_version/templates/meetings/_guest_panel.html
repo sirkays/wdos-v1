@@ -146,7 +146,7 @@ var c=document.getElementById('gcopy');if(c)c.addEventListener('click',function(
 if(!W||!I)return;
 function row(g,btns){var li=document.createElement('li'),s=document.createElement('span');s.className='font-semibold text-sm text-slate-800';s.textContent=g.name+(g.lang?' ('+g.lang.toUpperCase()+')':'');li.appendChild(s);
  var d=document.createElement('span');btns.forEach(function(b){var e=document.createElement('button');e.className='btn'+(b[1]==='admit'?' primary':'');e.type='button';e.textContent=b[0];e.onclick=function(){act(g.id,b[1])};d.appendChild(e);d.appendChild(document.createTextNode(' '))});li.appendChild(d);return li}
-function act(id,a){var fd=new FormData();fd.append('csrfmiddlewaretoken',csrf);fetch(base+id+'/'+a+'/',{method:'POST',body:fd,credentials:'same-origin',headers:{'x-requested-with':'fetch'}}).then(poll)}
+function act(id,a){if(a==='remove')document.dispatchEvent(new CustomEvent('wdos:kick',{detail:{identity:'guest-'+id}}));var fd=new FormData();fd.append('csrfmiddlewaretoken',csrf);fetch(base+id+'/'+a+'/',{method:'POST',body:fd,credentials:'same-origin',headers:{'x-requested-with':'fetch'}}).then(poll)}
 function fill(ul,items,btns,empty){ul.innerHTML='';if(!items.length){ul.innerHTML='<li class="ws-empty">'+empty+'</li>';return}items.forEach(function(g){ul.appendChild(row(g,btns))})}
 var reviewed={},lastWaiting=[];
 function isPeopleTabOpen(){var dr=document.getElementById('meet-drawer'),pp=document.getElementById('drawer-pane-people');return !!(dr&&!dr.classList.contains('collapsed')&&pp&&!pp.hidden)}

@@ -47,6 +47,12 @@ def remove_participant(meeting, identity):
         lk = api.LiveKitAPI(settings.LIVEKIT_URL.replace('wss://', 'https://').replace('ws://', 'http://'),
                             settings.LIVEKIT_API_KEY, settings.LIVEKIT_API_SECRET)
         try:
+            try:
+                await lk.room.send_data(api.SendDataRequest(
+                    room=room_name(meeting), data=json.dumps({'target': identity, 'kick': True}).encode(),
+                    kind=api.DataPacket.Kind.RELIABLE, topic='wdos_media_ctrl', destination_identities=[identity]))
+            except Exception:
+                pass
             await lk.room.remove_participant(api.RoomParticipantIdentity(room=room_name(meeting), identity=identity))
         finally:
             await lk.aclose()

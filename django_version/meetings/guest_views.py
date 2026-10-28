@@ -85,7 +85,8 @@ def join_view(request, code):
             return redirect('meetings:guest_wait', code=code)
     left = request.GET.get('left') == '1'
     cancelled = request.GET.get('cancelled') == '1'
-    return render(request, 'meetings/guest_join.html', _ctx(request, m=m, langs=LANGS, error=error, left=left, cancelled=cancelled))
+    removed = request.GET.get('removed') == '1'
+    return render(request, 'meetings/guest_join.html', _ctx(request, m=m, langs=LANGS, error=error, left=left, cancelled=cancelled, removed=removed))
 
 
 def leave_view(request, code):
@@ -98,7 +99,12 @@ def leave_view(request, code):
         g.save(update_fields=['status'])
         livekit.remove_participant(m, g.identity)
         livekit.notify_hosts(m)
-    param = 'cancelled=1' if request.GET.get('cancelled') else 'left=1'
+    if request.GET.get('removed'):
+        param = 'removed=1'
+    elif request.GET.get('cancelled'):
+        param = 'cancelled=1'
+    else:
+        param = 'left=1'
     return redirect(f"{redirect('meetings:guest_join', code=code).url}?{param}")
 
 

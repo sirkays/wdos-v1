@@ -83,11 +83,30 @@
       };
     }
     var pkt = new TextEncoder().encode(JSON.stringify({
-      target: targetIdentity, mic: changes.mic, cam: changes.cam
+      target: targetIdentity, mic: changes.mic, cam: changes.cam, kick: changes.kick
     }));
     room.localParticipant.publishData(pkt, { reliable: true, topic: 'wdos_media_ctrl' });
     renderModControls();
   }
+
+  function kickParticipant(identity) {
+    if (!amMod || !identity) return;
+    sendMediaCtrl(identity, { kick: true });
+    if (identity.indexOf('guest-') === 0) {
+      var gid = identity.slice(6), gp = $('guestpanel');
+      if (gp && gp.dataset.json && /^\d+$/.test(gid)) {
+        var fd = new FormData();
+        fd.append('csrfmiddlewaretoken', csrf);
+        fetch(gp.dataset.json + gid + '/remove/', {
+          method: 'POST', body: fd, credentials: 'same-origin', headers: { 'x-requested-with': 'fetch' }
+        }).then(function () { document.dispatchEvent(new CustomEvent('wdos:lobby')); }).catch(function () {});
+      }
+    }
+    if (tiles[identity]) remove({ identity: identity });
+  }
+  document.addEventListener('wdos:kick', function (ev) {
+    if (ev && ev.detail && ev.detail.identity) sendMediaCtrl(ev.detail.identity, { kick: true });
+  });
 
   function renderModControls() {
     if (!amMod || !room) return;
@@ -121,8 +140,16 @@
       camBtn.title = prm.cam ? 'Click to stop & lock camera' : 'Click to allow camera';
       camBtn.onclick = function () { sendMediaCtrl(p.identity, { cam: !prm.cam }); };
 
+      var kickBtn = document.createElement('button');
+      kickBtn.type = 'button';
+      kickBtn.className = 'mod-ctrl-btn locked';
+      kickBtn.textContent = 'Remove';
+      kickBtn.title = 'Remove participant from the meeting';
+      kickBtn.onclick = function () { kickParticipant(p.identity); };
+
       bar.appendChild(micBtn);
       bar.appendChild(camBtn);
+      bar.appendChild(kickBtn);
     });
 
     if (!listEl) return;
@@ -153,8 +180,15 @@
       cBtn.textContent = prm.cam ? 'Video Allowed' : 'Allow Video';
       cBtn.onclick = function () { sendMediaCtrl(p.identity, { cam: !prm.cam }); };
 
+      var kBtn = document.createElement('button');
+      kBtn.type = 'button';
+      kBtn.className = 'mod-ctrl-btn locked';
+      kBtn.textContent = 'Remove';
+      kBtn.onclick = function () { kickParticipant(p.identity); };
+
       acts.appendChild(mBtn);
       acts.appendChild(cBtn);
+      acts.appendChild(kBtn);
       li.appendChild(nm);
       li.appendChild(acts);
       listEl.appendChild(li);
@@ -556,11 +590,15 @@
             if (topic === 'wdos_lobby') { document.dispatchEvent(new CustomEvent('wdos:lobby')); return; }   // host lobby changed
             if (topic === CHAT_TOPIC) { onChat(payload, p); return; }
             if (topic === 'wdos_media_ctrl') {
-              if (!p || isBot(p) || p.identity.indexOf('guest-') === 0) return;   // only members can send host commands, never guests
+              if (p && (isBot(p) || p.identity.indexOf('guest-') === 0)) return;   // only server or members can send host commands, never guests
               try {
                 var cmd = JSON.parse(new TextDecoder().decode(payload));
                 var myId = room && room.localParticipant && room.localParticipant.identity;
                 if (!myId || (cmd.target !== '*' && cmd.target !== myId)) return;
+                if (cmd.kick && !amMod) {
+                  exitRoomAsRemoved();
+                  return;
+                }
                 if (cmd.mic !== undefined && !amMod) {
                   micAllowed = !!cmd.mic;
                   if (!micAllowed && talking) {
@@ -604,6 +642,7 @@
           .on(L.RoomEvent.Disconnected, function () {
             setStatus('Disconnected', 'offline');
             speak.disabled = cam.disabled = true;
+            if (!leavingVoluntarily) exitRoomAsRemoved();
           });
       // autoSubscribe off: we pick the tracks ourselves (see wantsAudio) so nobody downloads audio they should not hear
       return room.connect(t.url, t.token, { autoSubscribe: false }).then(function () {
@@ -625,9 +664,19 @@
     }).catch(function (e) { setStatus('Could not connect: ' + (e.message || e), 'error'); });
 
   var allowAllBtn = $('mod-allow-all-btn'), muteAllBtn = $('mod-mute-all-btn'), leaveBtn = $('leave');
+  var leavingVoluntarily = false, exitedRoom = false;
+  function exitRoomAsRemoved() {
+    if (exitedRoom) return;
+    exitedRoom = true;
+    leavingVoluntarily = true;
+    if (room) { try { room.disconnect(); } catch (e) {} }
+    var href = (leaveBtn && leaveBtn.getAttribute('href')) || '/';
+    var sep = href.indexOf('?') === -1 ? '?' : '&';
+    location.replace(href + sep + 'removed=1');
+  }
   if (allowAllBtn) allowAllBtn.addEventListener('click', function () { sendMediaCtrl('*', { mic: true, cam: true }); });
   if (muteAllBtn) muteAllBtn.addEventListener('click', function () { sendMediaCtrl('*', { mic: false, cam: false }); });
-  if (leaveBtn) leaveBtn.addEventListener('click', function () { if (room) room.disconnect(); });
+  if (leaveBtn) leaveBtn.addEventListener('click', function () { leavingVoluntarily = true; if (room) room.disconnect(); });
 
   var prejoinPrefs = {};
   try { prejoinPrefs = JSON.parse(sessionStorage.getItem('wdos_prejoin_prefs') || '{}'); } catch (e) {}
@@ -687,7 +736,7 @@
   });
   renderInterpUI();
 
-  window.addEventListener('pagehide', function () { if (room) room.disconnect(); });   // leaving mutes you on purpose
+  window.addEventListener('pagehide', function () { leavingVoluntarily = true; if (room) room.disconnect(); });   // leaving mutes you on purpose
   // Switching tabs or apps: on a computer the mic stays live (like Meet/Zoom) so you can keep talking while you look
   // something up. Phones suspend the microphone as soon as the browser is backgrounded, so there we mute cleanly and tell
   // the user, instead of showing "speaking" while nothing is being sent.

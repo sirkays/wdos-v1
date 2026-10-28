@@ -103,6 +103,8 @@ def detail_view(request, pk):
     if (g := _guard(request)):
         return g
     m = _get(request, pk)
+    if request.GET.get('removed') == '1':
+        messages.warning(request, 'You were removed from the meeting room by the host.')
     mgr = access.is_manager(request.user, m)
     people = access.invitees(m).order_by('last_name', 'first_name')[:300] if mgr else []
     marks = {a.profile_id: a.present for a in m.attendance_records.all()}
