@@ -158,11 +158,26 @@ def join_view(request, pk):
     return redirect('meetings:detail', pk=pk)
 
 
+def _fmt_12h(dt):
+    """Format a timezone-aware datetime as a clear 12-hour clock string (e.g. 'Thu 29 Oct 2026, 7:00 PM')."""
+    loc = timezone.localtime(dt)
+    hour12 = loc.hour % 12 or 12
+    ampm = 'AM' if loc.hour < 12 else 'PM'
+    return f"{loc.strftime('%a %d %b %Y')}, {hour12}:{loc.strftime('%M')} {ampm}"
+
+
+def _fmt_time_12h(dt):
+    loc = timezone.localtime(dt)
+    hour12 = loc.hour % 12 or 12
+    ampm = 'AM' if loc.hour < 12 else 'PM'
+    return f"{hour12}:{loc.strftime('%M')} {ampm}"
+
+
 @login_required
 def live_view(request, pk):
     m = _get(request, pk)
     return JsonResponse({'count': m.checkins.count(), 'status': m.status, 'people': [
-        {'name': c.profile.full_name if hasattr(c.profile, 'full_name') else str(c.profile), 'at': c.joined_at.strftime('%H:%M')}
+        {'name': c.profile.full_name if hasattr(c.profile, 'full_name') else str(c.profile), 'at': _fmt_time_12h(c.joined_at)}
         for c in m.checkins.select_related('profile')]})
 
 
@@ -249,6 +264,18 @@ def cancel_view(request, pk):
 
 @login_required
 @require_POST
+def delete_view(request, pk):
+    """Permanently delete a meeting (managers only). If the room is live, close it for everyone first."""
+    m = _manager_only(request, pk)
+    title = m.title
+    livekit.end_room(m)
+    m.delete()
+    messages.success(request, f'Meeting "{title}" has been deleted.')
+    return redirect('meetings:list')
+
+
+@login_required
+@require_POST
 def upload_view(request, pk):
     m = _manager_only(request, pk)
     f = request.FILES.get('file')
@@ -298,11 +325,10 @@ def room_view(request, pk):
         elif m.status == 'completed':
             messages.info(request, 'This meeting has ended, so the WODDI Room is closed.')
         elif now > m.ends_at:
-            ended = timezone.localtime(m.ends_at)
-            messages.warning(request, 'The scheduled time for this meeting has elapsed (ended at %s), so the WODDI Room is closed.' % ended.strftime('%a %d %b, %H:%M'))
+            messages.warning(request, 'The scheduled time for this meeting has elapsed (starts %s · ends %s), so the WODDI Room is closed.' % (_fmt_12h(m.starts_at), _fmt_12h(m.ends_at)))
         else:
-            opens = timezone.localtime(m.starts_at - timezone.timedelta(minutes=15))
-            messages.info(request, 'The WODDI Room opens 15 minutes before the start, at %s.' % opens.strftime('%a %d %b, %H:%M'))
+            opens = m.starts_at - timezone.timedelta(minutes=15)
+            messages.info(request, 'The WODDI Room opens 15 minutes before the start time, at %s (Meeting starts: %s · ends: %s).' % (_fmt_12h(opens), _fmt_12h(m.starts_at), _fmt_12h(m.ends_at)))
         return redirect('meetings:detail', pk=pk)
     if not _passcode_ok(request, m):
         messages.error(request, 'This room requires a passcode to join.')

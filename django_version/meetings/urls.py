@@ -17,6 +17,7 @@ urlpatterns = [
     path('workspace/meetings/<uuid:pk>/end/', views.end_view, name='end'),
     path('workspace/meetings/<uuid:pk>/control/', views.control_view, name='control'),
     path('workspace/meetings/<uuid:pk>/cancel/', views.cancel_view, name='cancel'),
+    path('workspace/meetings/<uuid:pk>/delete/', views.delete_view, name='delete'),
     path('workspace/meetings/<uuid:pk>/upload/', views.upload_view, name='upload'),
     path('workspace/meetings/<uuid:pk>/files/<int:file_id>/', views.download_view, name='download'),
     # guest access (no login)

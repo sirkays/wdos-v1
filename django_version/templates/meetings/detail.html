@@ -57,11 +57,19 @@
         <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">{{ m.title }}</h1>
 
         <!-- Metadata Strip -->
-        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-slate-600 pt-0.5">
-          <span class="inline-flex items-center gap-1.5 font-medium text-slate-700">
-            <svg class="text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            {{ m.starts_at|date:"D j M Y, H:i" }} – {{ m.ends_at|date:"H:i" }}
-          </span>
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-slate-600 pt-1">
+          <div class="inline-flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 border border-slate-200/80 px-3 py-1.5 text-slate-700">
+            <span class="inline-flex items-center gap-1.5">
+              <svg class="text-woddi-600 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Starts:</span>
+              <strong class="font-bold text-slate-900">{{ m.starts_at|date:"D j M Y, g:i A" }}</strong>
+            </span>
+            <span class="text-slate-300" aria-hidden="true">·</span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ends:</span>
+              <strong class="font-bold text-slate-900">{% if m.starts_at|date:"Y-m-d" == m.ends_at|date:"Y-m-d" %}{{ m.ends_at|date:"g:i A" }}{% else %}{{ m.ends_at|date:"D j M Y, g:i A" }}{% endif %}</strong>
+            </span>
+          </div>
           {% if m.location %}
           <span class="inline-flex items-center gap-1.5">
             <svg class="text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/></svg>
@@ -81,28 +89,33 @@
       <div class="flex flex-wrap items-center gap-2.5 shrink-0">
         {% if m.status != 'completed' and m.status != 'cancelled' %}
         {% if m.platform == 'woddi' %}
-        <a href="#prejoin-studio" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-3 text-xs font-bold text-slate-700 hover:border-woddi-500 hover:text-woddi-700 transition shadow-2xs">
+        <a href="#prejoin-studio" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 h-11 text-xs font-bold text-slate-700 hover:border-woddi-500 hover:text-woddi-700 transition shadow-2xs">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
           <span>Test Mic &amp; Video</span>
         </a>
         {% endif %}
-        <form method="post" action="{% url 'meetings:join' m.pk %}" class="flex flex-wrap items-center gap-2">
+        <form method="post" action="{% url 'meetings:join' m.pk %}" class="flex flex-wrap items-center gap-2.5">
           {% csrf_token %}
           {% if m.platform == 'woddi' %}
-          <label class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-500" title="Chosen before you join; it can't be changed inside the room">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-woddi-600 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-            <span>I hear in</span>
-            <select name="lang" aria-label="Language I want to hear the meeting in" class="bg-transparent text-sm font-bold text-slate-900 focus:outline-none cursor-pointer">
-              {% for c,n in langs %}<option value="{{ c }}" {% if c == my_lang %}selected{% endif %}>{{ n }}</option>{% endfor %}
-            </select>
-          </label>
+          <div class="relative inline-flex items-center rounded-xl border border-slate-300 bg-slate-50/80 hover:bg-white hover:border-woddi-400 focus-within:border-woddi-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-woddi-500/15 transition h-11 pl-3 pr-2 shadow-2xs" title="Chosen before you join; it can't be changed inside the room">
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-woddi-50 text-woddi-600 shrink-0 mr-2">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </span>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mr-1.5 select-none">I hear in</span>
+            <div class="relative inline-flex items-center">
+              <select name="lang" aria-label="Language I want to hear the meeting in" style="-webkit-appearance:none;-moz-appearance:none;appearance:none;border:0;padding:0 24px 0 6px;margin:0;width:auto;background:transparent;" class="text-sm font-extrabold text-slate-900 focus:outline-none cursor-pointer">
+                {% for c,n in langs %}<option value="{{ c }}" {% if c == my_lang %}selected{% endif %}>{{ n }}</option>{% endfor %}
+              </select>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none absolute right-1 text-slate-500"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
           {% endif %}
           {% if m.passcode and not passcode_unlocked %}
           <div class="relative">
-            <input type="password" name="passcode" maxlength="32" required autocomplete="off" placeholder="Enter room passcode" aria-label="Room passcode" class="rounded-xl border border-amber-300 bg-amber-50/40 px-3.5 py-2.5 text-sm font-mono text-slate-900 placeholder:font-sans placeholder:text-slate-400 focus:border-woddi-600 focus:bg-white focus:outline-none w-48">
+            <input type="password" name="passcode" maxlength="32" required autocomplete="off" placeholder="Enter room passcode" aria-label="Room passcode" class="rounded-xl border border-amber-300 bg-amber-50/40 px-3.5 h-11 text-sm font-mono text-slate-900 placeholder:font-sans placeholder:text-slate-400 focus:border-woddi-600 focus:bg-white focus:outline-none w-48">
           </div>
           {% endif %}
-          <button class="btn primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold shadow-sm" type="submit">
+          <button class="btn primary inline-flex items-center gap-2 rounded-xl px-5 h-11 text-sm font-bold shadow-sm" type="submit">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
             <span>{% if m.platform == 'woddi' %}Join WODDI Room{% else %}Open meeting link{% endif %}</span>
           </button>
@@ -111,12 +124,50 @@
         {% if mgr and m.status == 'scheduled' %}
         <form method="post" action="{% url 'meetings:cancel' m.pk %}">
           {% csrf_token %}
-          <button class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-xs font-bold text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition" type="submit">Cancel meeting</button>
+          <button class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 h-11 text-xs font-bold text-slate-600 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-200 transition cursor-pointer" type="submit">Cancel meeting</button>
         </form>
+        {% endif %}
+        {% if mgr %}
+        <button type="button" id="open-delete-meeting-modal" class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/60 px-3.5 h-11 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition cursor-pointer" title="Permanently delete this meeting">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <span>Delete</span>
+        </button>
         {% endif %}
       </div>
     </div>
   </section>
+
+  {% if mgr %}
+  <!-- Delete Meeting Confirmation Modal -->
+  <div id="delete-meeting-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4" hidden>
+    <div id="delete-meeting-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"></div>
+    <div role="dialog" aria-modal="true" aria-labelledby="delete-meeting-title" class="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+      <div class="flex items-start gap-3.5">
+        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+        </span>
+        <div class="min-w-0 flex-1">
+          <h2 id="delete-meeting-title" class="text-base font-extrabold text-slate-900">Delete "{{ m.title }}"?</h2>
+          <p class="mt-1.5 text-xs text-slate-600 leading-relaxed">
+            This will permanently delete the meeting, its guest link, attendance records, uploaded documents, and transcript. This action cannot be undone.
+          </p>
+        </div>
+      </div>
+      <div class="mt-5 flex items-center justify-end gap-2.5">
+        <button type="button" id="cancel-delete-meeting-btn" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer">
+          Keep meeting
+        </button>
+        <form method="post" action="{% url 'meetings:delete' m.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Yes, delete meeting</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Main 2-Column Workspace Grid -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -235,7 +286,7 @@
           {% for c in checkins %}
           <li>
             <span class="font-semibold text-sm text-slate-800">{{ c.profile.full_name }}</span>
-            <small class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{{ c.joined_at|date:"H:i" }}</small>
+            <small class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{{ c.joined_at|date:"g:i A" }}</small>
           </li>
           {% empty %}
           <li class="ws-empty">Nobody has joined yet.</li>
@@ -317,5 +368,12 @@
 (function(){var u="{% url 'meetings:live' m.pk %}",box=document.getElementById('joined'),c=document.getElementById('count');
 setInterval(function(){fetch(u,{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){c.textContent=d.count;
 box.innerHTML=d.people.length?d.people.map(function(p){return '<li><span class="font-semibold text-sm text-slate-800"></span><small class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">'+p.at+'</small></li>'}).join(''):'<li class="ws-empty">Nobody has joined yet.</li>';
-box.querySelectorAll('li span').forEach(function(s,i){s.textContent=d.people[i].name})}).catch(function(){})},5000)})();
+box.querySelectorAll('li span').forEach(function(s,i){s.textContent=d.people[i].name})}).catch(function(){})},5000);
+var openBtn=document.getElementById('open-delete-meeting-modal'),modal=document.getElementById('delete-meeting-modal'),cancelBtn=document.getElementById('cancel-delete-meeting-btn'),backdrop=document.getElementById('delete-meeting-backdrop');
+function closeDel(){if(modal)modal.hidden=true;}
+if(openBtn&&modal){openBtn.addEventListener('click',function(){modal.hidden=false;});}
+if(cancelBtn){cancelBtn.addEventListener('click',closeDel);}
+if(backdrop){backdrop.addEventListener('click',closeDel);}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal&&!modal.hidden)closeDel();});
+})();
 </script>{% endblock %}

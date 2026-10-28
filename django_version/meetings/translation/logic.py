@@ -69,8 +69,12 @@ def catch_up_rate(backlog):
 
 def draft_minutes(meeting, segments, attendees):
     """A transcript digest for the leader to edit and approve; it is not saved until she closes the meeting."""
+    s = meeting.starts_at
+    e = meeting.ends_at
+    s_time = f"{s.hour % 12 or 12}:{s:%M} {'AM' if s.hour < 12 else 'PM'}"
+    e_time = f"{e.hour % 12 or 12}:{e:%M} {'AM' if e.hour < 12 else 'PM'}"
     lines = [f'MINUTES (draft from live transcript): {meeting.title}',
-             meeting.starts_at.strftime('%A %d %B %Y, %H:%M UTC'), '',
+             f'Starts: {s:%A %d %B %Y}, {s_time} UTC · Ends: {e:%A %d %B %Y}, {e_time} UTC', '',
              'Present: ' + (', '.join(attendees) if attendees else 'not recorded'), '', 'Discussion:']
     lines += [f'- {s.speaker}: {s.text}' for s in segments]
     lines += ['', 'Decisions:', '- ', '', 'Actions (owner, due date):', '- ']

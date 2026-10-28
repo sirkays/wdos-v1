@@ -25,7 +25,7 @@
     <li class="py-3.5 flex flex-wrap items-center justify-between gap-3">
       <a href="{% url 'meetings:detail' m.pk %}" class="group">
         <b class="text-sm font-bold text-slate-900 group-hover:text-woddi-600 transition-colors">{{ m.title }}</b><br>
-        <small class="text-xs text-slate-500">{{ m.starts_at|date:"D j M Y, H:i" }} · {% if m.access == 'anyone' %}Anyone with the link{% else %}{{ m.org_unit.name }}{% endif %}</small>
+        <small class="text-xs text-slate-500">Starts: {{ m.starts_at|date:"D j M Y, g:i A" }} · Ends: {% if m.starts_at|date:"Y-m-d" == m.ends_at|date:"Y-m-d" %}{{ m.ends_at|date:"g:i A" }}{% else %}{{ m.ends_at|date:"D j M Y, g:i A" }}{% endif %} · {% if m.access == 'anyone' %}Anyone with the link{% else %}{{ m.org_unit.name }}{% endif %}</small>
       </a>
       <span class="flex items-center gap-1.5">
         {% if m.access == 'anyone' %}<span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">Guest Link</span>{% endif %}
@@ -50,7 +50,7 @@
     <li class="py-3.5 flex flex-wrap items-center justify-between gap-3">
       <a href="{% url 'meetings:detail' m.pk %}">
         <b class="text-sm font-bold text-slate-800">{{ m.title }}</b><br>
-        <small class="text-xs text-slate-500">{{ m.starts_at|date:"D j M Y, H:i" }} · {{ m.org_unit.name }}</small>
+        <small class="text-xs text-slate-500">Starts: {{ m.starts_at|date:"D j M Y, g:i A" }} · Ends: {% if m.starts_at|date:"Y-m-d" == m.ends_at|date:"Y-m-d" %}{{ m.ends_at|date:"g:i A" }}{% else %}{{ m.ends_at|date:"D j M Y, g:i A" }}{% endif %} · {{ m.org_unit.name }}</small>
       </a>
       <span class="chip grey">{{ m.get_status_display }}</span>
     </li>

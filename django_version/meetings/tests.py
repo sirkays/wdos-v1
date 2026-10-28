@@ -56,6 +56,26 @@ class MeetingsFlow(TestCase):
         self.client.force_login(other)
         self.assertEqual(self.client.get(reverse('meetings:detail', args=[m.pk])).status_code, 404)
 
+    def test_manager_can_delete_meeting_and_member_cannot(self):
+        from unittest import mock
+        now = timezone.now()
+        m = Meeting.objects.create(title='To Delete', org_unit=self.unit, organiser=self.hq, starts_at=now, ends_at=now + timedelta(hours=1))
+        del_url = reverse('meetings:delete', args=[m.pk])
+        # plain member does not see the delete button and cannot delete
+        self.client.force_login(self.member)
+        self.assertNotContains(self.client.get(reverse('meetings:detail', args=[m.pk])), 'id="open-delete-meeting-modal"')
+        self.assertEqual(self.client.post(del_url).status_code, 404)
+        self.assertTrue(Meeting.objects.filter(pk=m.pk).exists())
+        # manager sees the delete button and can delete the meeting
+        self.client.force_login(self.hq)
+        self.assertContains(self.client.get(reverse('meetings:detail', args=[m.pk])), 'id="open-delete-meeting-modal"')
+        with mock.patch('meetings.livekit.end_room') as end_room:
+            r = self.client.post(del_url, follow=True)
+            end_room.assert_called_once()
+        self.assertRedirects(r, reverse('meetings:list'))
+        self.assertContains(r, 'Meeting &quot;To Delete&quot; has been deleted.')
+        self.assertFalse(Meeting.objects.filter(pk=m.pk).exists())
+
 
 class RoomTests(MeetingsFlow):
     def _meeting(self, **kw):
