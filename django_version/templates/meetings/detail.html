@@ -56,20 +56,8 @@
         <!-- Title -->
         <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">{{ m.title }}</h1>
 
-        <!-- Metadata Strip -->
-        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-slate-600 pt-1">
-          <div class="inline-flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 border border-slate-200/80 px-3 py-1.5 text-slate-700">
-            <span class="inline-flex items-center gap-1.5">
-              <svg class="text-woddi-600 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Starts:</span>
-              <strong class="font-bold text-slate-900">{{ m.starts_at|date:"D j M Y, g:i A" }}</strong>
-            </span>
-            <span class="text-slate-300" aria-hidden="true">·</span>
-            <span class="inline-flex items-center gap-1.5">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ends:</span>
-              <strong class="font-bold text-slate-900">{% if m.starts_at|date:"Y-m-d" == m.ends_at|date:"Y-m-d" %}{{ m.ends_at|date:"g:i A" }}{% else %}{{ m.ends_at|date:"D j M Y, g:i A" }}{% endif %}</strong>
-            </span>
-          </div>
+        <!-- Metadata Strip (Location & Host) -->
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-slate-600 pt-0.5">
           {% if m.location %}
           <span class="inline-flex items-center gap-1.5">
             <svg class="text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/></svg>
@@ -135,11 +123,34 @@
         {% endif %}
       </div>
     </div>
+
+    <!-- Dedicated Full-Width Schedule Row (Start & End Time) -->
+    <div class="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-2.5">
+        <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-woddi-50 text-woddi-600">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </span>
+        <div class="min-w-0">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 leading-none">Start Time</div>
+          <div class="text-sm font-extrabold text-slate-900 mt-1 whitespace-nowrap">{{ m.starts_at|date:"D j M Y, g:i A" }}</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-2.5">
+        <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-200/70 text-slate-600">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </span>
+        <div class="min-w-0">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 leading-none">End Time</div>
+          <div class="text-sm font-extrabold text-slate-900 mt-1 whitespace-nowrap">{{ m.ends_at|date:"D j M Y, g:i A" }}</div>
+        </div>
+      </div>
+    </div>
   </section>
 
   {% if mgr %}
   <!-- Delete Meeting Confirmation Modal -->
-  <div id="delete-meeting-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4" hidden>
+  <div id="delete-meeting-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="display:none;" hidden>
     <div id="delete-meeting-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"></div>
     <div role="dialog" aria-modal="true" aria-labelledby="delete-meeting-title" class="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
       <div class="flex items-start gap-3.5">
@@ -370,8 +381,9 @@ setInterval(function(){fetch(u,{credentials:'same-origin'}).then(function(r){ret
 box.innerHTML=d.people.length?d.people.map(function(p){return '<li><span class="font-semibold text-sm text-slate-800"></span><small class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">'+p.at+'</small></li>'}).join(''):'<li class="ws-empty">Nobody has joined yet.</li>';
 box.querySelectorAll('li span').forEach(function(s,i){s.textContent=d.people[i].name})}).catch(function(){})},5000);
 var openBtn=document.getElementById('open-delete-meeting-modal'),modal=document.getElementById('delete-meeting-modal'),cancelBtn=document.getElementById('cancel-delete-meeting-btn'),backdrop=document.getElementById('delete-meeting-backdrop');
-function closeDel(){if(modal)modal.hidden=true;}
-if(openBtn&&modal){openBtn.addEventListener('click',function(){modal.hidden=false;});}
+function openDel(){if(!modal)return;modal.hidden=false;modal.classList.remove('hidden');modal.style.display='flex';}
+function closeDel(){if(!modal)return;modal.hidden=true;modal.classList.add('hidden');modal.style.display='none';}
+if(openBtn&&modal){openBtn.addEventListener('click',openDel);}
 if(cancelBtn){cancelBtn.addEventListener('click',closeDel);}
 if(backdrop){backdrop.addEventListener('click',closeDel);}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal&&!modal.hidden)closeDel();});
