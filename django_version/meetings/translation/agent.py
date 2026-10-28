@@ -59,6 +59,7 @@ class RoomBot:
         self.tasks = set()
         self.speech_q = {}    # lang -> asyncio.Queue of PCM for the TTS publisher
         self.listening = {}   # (identity, track sid) -> (task, language it is recognising, track, participant)
+        self.retries = {}     # (identity, track sid) -> consecutive recogniser failures (reset on the first good result)
 
     # -- helpers ------------------------------------------------------------
     def _spawn(self, coro):
@@ -223,9 +224,30 @@ class RoomBot:
                 secs = max(1, int(evt.result.duration / 10_000_000))
                 loop.call_soon_threadsafe(on_final, evt.result.text, secs)
 
+        # Azure ends a recogniser quietly when it refuses it (quota used up, throttled, bad key, network). Say so in the
+        # log with Azure's own reason, and try again a few times, so one hiccup never leaves a speaker un-interpreted.
+        key = (participant.identity, track.sid)
+
+        def on_error(detail):
+            log.error('speech recognition for %s (%s) stopped: %s', participant.identity, lang, detail)
+            n = self.retries.get(key, 0)
+            if n < 5:
+                self.retries[key] = n + 1
+                self._spawn(self.retry_listening(key, track, participant, 3 * (n + 1)))
+
+        def canceled(evt):
+            d = evt.cancellation_details
+            if d.reason == speechsdk.CancellationReason.Error:
+                loop.call_soon_threadsafe(on_error, f'{d.error_code}: {d.error_details}')
+
+        def on_ok():
+            self.retries.pop(key, None)
+
         rec.recognizing.connect(interim)
-        rec.recognized.connect(final)
-        rec.start_continuous_recognition_async().get()
+        rec.recognized.connect(lambda evt: (final(evt), loop.call_soon_threadsafe(on_ok)))
+        rec.canceled.connect(canceled)
+        # Starting the recogniser talks to Azure; keep that off the event loop so a slow answer cannot freeze every room.
+        await asyncio.to_thread(lambda: rec.start_continuous_recognition_async().get())
         try:
             async for ev in rtc.AudioStream(track, sample_rate=16000, num_channels=1):
                 push.write(ev.frame.data.tobytes())
@@ -235,10 +257,26 @@ class RoomBot:
             await asyncio.to_thread(lambda: rec.stop_continuous_recognition_async().get())
             work.put_nowait(None)
 
+    async def retry_listening(self, key, track, participant, delay):
+        await asyncio.sleep(delay)
+        if key in self.listening:       # only if that microphone is still in the room
+            log.info('retrying speech recognition for %s', participant.identity)
+            self.start_listening(track, participant)
+
     # -- lifecycle -----------------------------------------------------------
     async def run(self, stop):
+        """Keep the interpreter in the room until `stop` is set. If the connection to the room is lost for good, raise so the
+        supervisor starts a fresh bot (a bot that silently sits disconnected is the worst case: the room looks interpreted
+        but nothing is translated)."""
         from livekit import rtc
         self.room = rtc.Room()
+        dropped = asyncio.Event()
+
+        @self.room.on('disconnected')
+        def _disc(*_):
+            if not stop.is_set():
+                log.warning('interpreter lost its connection to %s', self.room_name)
+                dropped.set()
 
         @self.room.on('track_subscribed')
         def _sub(track, pub, participant):
@@ -280,7 +318,15 @@ class RoomBot:
         # voice channels exist before anyone asks, so browsers can subscribe on arrival
         for lang in VOICE:
             await self.source_for(lang)
-        await stop.wait()
+        waiters = [asyncio.ensure_future(stop.wait()), asyncio.ensure_future(dropped.wait())]
+        await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
+        for w in waiters:
+            w.cancel()
         for t in list(self.tasks):
             t.cancel()
-        await self.room.disconnect()
+        try:
+            await self.room.disconnect()
+        except Exception as exc:
+            log.warning('interpreter disconnect: %s', exc)
+        if dropped.is_set() and not stop.is_set():
+            raise ConnectionError(f'interpreter lost its connection to {self.room_name}')

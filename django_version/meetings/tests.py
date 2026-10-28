@@ -449,3 +449,50 @@ class GuestAccess(RoomTests):
 
 
 
+
+
+class InterpreterSupervisor(TestCase):
+    """The interpreter worker must replace a bot that dropped out of its room, and keep going after a lookup error."""
+
+    def test_a_bot_that_lost_its_room_is_replaced_and_closed_meetings_are_stopped(self):
+        import asyncio
+        from io import StringIO
+        from unittest import mock
+
+        from .management.commands import run_translation_agent as agent_cmd
+
+        starts = []
+
+        class FakeBot:
+            def __init__(self, mid, name):
+                self.mid = mid
+
+            async def run(self, stop):
+                starts.append(self.mid)
+                if len(starts) == 1:
+                    raise ConnectionError('lost')       # first bot drops out of the room straight away
+                await stop.wait()
+
+        rooms = {'m1': 'meeting-m1'}
+
+        async def fake_open_rooms(only=None):
+            return dict(rooms)
+
+        async def scenario():
+            cmd = agent_cmd.Command()
+            cmd.stdout = StringIO()
+            running = {}
+            with mock.patch.object(agent_cmd, 'RoomBot', FakeBot), mock.patch.object(agent_cmd, 'open_rooms', fake_open_rooms):
+                await cmd.tick(running, None)
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+                await cmd.tick(running, None)            # sees the dead bot, says why, starts another
+                await asyncio.sleep(0)
+                self.assertEqual(starts, ['m1', 'm1'])
+                self.assertIn('restarting', cmd.stdout.getvalue())
+                self.assertIn('lost', cmd.stdout.getvalue())
+                rooms.clear()                            # meeting closed: its bot is told to stop
+                await cmd.tick(running, None)
+                self.assertEqual(running, {})
+
+        asyncio.run(scenario())
