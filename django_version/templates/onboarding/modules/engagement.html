@@ -1,0 +1,150 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Communications, Engagement, Spotlight &amp; Outreach CRM</span>
+  <h1>Engagement, Content Studio &amp; Partnerships</h1>
+  <p>Manage continental events, review Leader Spotlight nominations, publish Content Studio prompts, and track external Outreach &amp; Donor partnerships.</p>
+  <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+    <a href="?mode=engagement" class="wdos-btn wdos-btn-sm {% if mode == 'engagement' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Engagement Calendar</a>
+    <a href="?mode=spotlight" class="wdos-btn wdos-btn-sm {% if mode == 'spotlight' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Spotlight Review ({{ spotlights|length }})</a>
+    <a href="?mode=content" class="wdos-btn wdos-btn-sm {% if mode == 'content' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Content Studio</a>
+    <a href="?mode=outreach" class="wdos-btn wdos-btn-sm {% if mode == 'outreach' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Outreach &amp; Donor CRM ({{ outreach_contacts|length }})</a>
+  </div>
+</div>
+
+{% if mode == 'spotlight' %}
+<div class="wdos-card">
+  <h2 class="wdos-card-title" style="margin-bottom:10px;">Leader Spotlight Nominations Queue</h2>
+  <div class="wdos-table-wrap">
+    <table class="wdos-table">
+      <thead><tr><th>Nominee</th><th>Network</th><th>Citation</th><th>Status</th><th>Decision</th></tr></thead>
+      <tbody>
+        {% for sp in spotlights %}
+        <tr>
+          <td><strong>{{ sp.nominee.full_name }}</strong></td>
+          <td>{{ sp.network }}</td>
+          <td>{{ sp.citation }}</td>
+          <td><span class="wdos-badge wdos-badge-slate">{{ sp.status }}</span></td>
+          <td>
+            <form method="post" style="display:flex; gap:6px;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="review_spotlight">
+              <input type="hidden" name="nomination_id" value="{{ sp.id }}">
+              <select name="status" class="wdos-select" style="width:120px; padding:4px 6px;">
+                <option value="approved">Approve</option>
+                <option value="declined">Decline</option>
+              </select>
+              <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Save</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="wdos-empty">No spotlight nominations submitted yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif mode == 'outreach' %}
+<div class="wdos-grid-2">
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Add Partner / Donor to Outreach CRM</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_outreach">
+      <div class="wdos-field">
+        <label class="wdos-label">Organisation Name</label>
+        <input type="text" name="organisation_name" class="wdos-input" required>
+      </div>
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Contact Person</label>
+          <input type="text" name="contact_person" class="wdos-input">
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Email</label>
+          <input type="email" name="email" class="wdos-input">
+        </div>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Country</label>
+        <input type="text" name="country" value="Nigeria" class="wdos-input">
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Add to CRM</button>
+    </form>
+  </div>
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Outreach &amp; Partnership Pipeline ({{ outreach_contacts|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Organisation</th><th>Contact</th><th>Country</th><th>Stage</th></tr></thead>
+        <tbody>
+          {% for oc in outreach_contacts %}
+          <tr>
+            <td><strong>{{ oc.organisation_name }}</strong></td>
+            <td>{{ oc.contact_person }}<div style="font-size:11px; color:#64748b;">{{ oc.email }}</div></td>
+            <td>{{ oc.country }}</td>
+            <td><span class="wdos-badge wdos-badge-green">{{ oc.stage }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="wdos-empty">No outreach contacts logged yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<div class="wdos-grid-2">
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Publish Engagement Event / Content Prompt</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_engagement">
+      <div class="wdos-field">
+        <label class="wdos-label">Title</label>
+        <input type="text" name="title" class="wdos-input" required>
+      </div>
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Type</label>
+          <select name="item_type" class="wdos-select">
+            <option value="event">Continental Event</option>
+            <option value="campaign">Mobilisation Campaign</option>
+            <option value="prompt">Content Studio Prompt</option>
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Network</label>
+          <select name="network" class="wdos-select">
+            <option value="BOTH">Both Networks</option>
+            <option value="WGMN">WGMN</option>
+            <option value="WNNN">WNNN</option>
+          </select>
+        </div>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Description</label>
+        <textarea name="description" class="wdos-textarea"></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Publish Item</button>
+    </form>
+  </div>
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Published Engagement &amp; Content Items ({{ items|length }})</h2>
+    {% for it in items %}
+    <div style="padding:10px 0; border-bottom:1px solid #f1f5f9;">
+      <span class="wdos-badge wdos-badge-blue">{{ it.item_type }}</span>
+      <strong style="margin-left:6px;">{{ it.title }}</strong> ({{ it.network }})
+      <div style="font-size:12.5px; color:#475569; margin-top:4px;">{{ it.description }}</div>
+    </div>
+    {% empty %}
+    <div class="wdos-empty">No engagement items published yet.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Operations · Tasks &amp; Follow-Up Engine</span>
+  <h1>Tasks &amp; Deliverables Command</h1>
+  <p>Assign operational tasks across your jurisdiction, enforce completion requirements (response notes &amp; evidence links), and track checklists and discussion threads.</p>
+  <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+    <a href="?scope=mine" class="wdos-btn wdos-btn-sm {% if scope == 'mine' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">My Tasks</a>
+    <a href="?scope=assigned" class="wdos-btn wdos-btn-sm {% if scope == 'assigned' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Assigned by Me</a>
+    <a href="?scope=overdue" class="wdos-btn wdos-btn-sm {% if scope == 'overdue' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Overdue</a>
+    <a href="?scope=done" class="wdos-btn wdos-btn-sm {% if scope == 'done' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Completed</a>
+    <a href="?scope=all" class="wdos-btn wdos-btn-sm {% if scope == 'all' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">All Jurisdiction</a>
+  </div>
+</div>
+
+{% if selected_task %}
+<div class="wdos-card" style="border: 2px solid #047857;">
+  <div class="wdos-card-head">
+    <div>
+      <span class="wdos-kicker">Task Detail · Assigned to {{ selected_task.assigned_to.full_name }}</span>
+      <h2 class="wdos-card-title">{{ selected_task.title }}</h2>
+      <div class="wdos-card-sub">Priority: {{ selected_task.get_priority_display }} · Due: {{ selected_task.due_on|default:"No deadline" }} · Status: <strong>{{ selected_task.get_status_display }}</strong></div>
+    </div>
+    <a href="{% url 'onboarding:tasks' %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Close Task</a>
+  </div>
+  <p style="font-size:13.5px; color:#334155;">{{ selected_task.details }}</p>
+
+  <div class="wdos-grid-2" style="margin-top:14px;">
+    <!-- Update Status & Submit Deliverable -->
+    <div style="padding:14px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+      <h3 style="font-size:14px; margin:0 0 10px;">Update Status &amp; Deliverable</h3>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_task_status">
+        <div class="wdos-field">
+          <label class="wdos-label">Status</label>
+          <select name="status" class="wdos-select">
+            <option value="pending" {% if selected_task.status == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="in_progress" {% if selected_task.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+            <option value="awaiting_review" {% if selected_task.status == 'awaiting_review' %}selected{% endif %}>Awaiting Review</option>
+            <option value="completed" {% if selected_task.status == 'completed' %}selected{% endif %}>Completed</option>
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Completion Response Note {% if selected_task.require_response %}(Required){% endif %}</label>
+          <textarea name="response_note" class="wdos-textarea" style="min-height:60px;">{{ selected_task.response_note }}</textarea>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Evidence / Deliverable Link {% if selected_task.require_evidence %}(Required){% endif %}</label>
+          <input type="text" name="evidence_url" value="{{ selected_task.evidence_url }}" class="wdos-input" placeholder="https://...">
+        </div>
+        <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Save Task Update</button>
+      </form>
+    </div>
+
+    <!-- Checklist & Comments -->
+    <div style="padding:14px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+      <h3 style="font-size:14px; margin:0 0 10px;">Checklist &amp; Comments</h3>
+      {% for item in selected_task.checklist_items.all %}
+      <form method="post" style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="toggle_checklist">
+        <input type="hidden" name="item_id" value="{{ item.id }}">
+        <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">{% if item.is_done %}✓{% else %}○{% endif %}</button>
+        <span style="{% if item.is_done %}text-decoration:line-through; color:#64748b;{% endif %}">{{ item.label }}</span>
+      </form>
+      {% endfor %}
+      <form method="post" style="display:flex; gap:6px; margin-top:8px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_checklist">
+        <input type="text" name="label" class="wdos-input" placeholder="Add checklist item..." required>
+        <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">Add</button>
+      </form>
+
+      <div style="margin-top:14px; padding-top:10px; border-top:1px solid #e2e8f0;">
+        {% for c in selected_task.comments.all %}
+        <div style="font-size:12.5px; margin-bottom:6px;"><strong>{{ c.author.full_name }}:</strong> {{ c.body }}</div>
+        {% endfor %}
+        <form method="post" style="display:flex; gap:6px; margin-top:8px;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_comment">
+          <input type="text" name="body" class="wdos-input" placeholder="Write a comment..." required>
+          <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Post</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="wdos-grid-3">
+  <!-- Create New Task -->
+  <div class="wdos-card" style="grid-column: span 1;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Assign New Task</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_task">
+      <div class="wdos-field">
+        <label class="wdos-label">Task Title</label>
+        <input type="text" name="title" class="wdos-input" required>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Assign To</label>
+        <select name="assigned_to" class="wdos-select">
+          {% for l in all_leaders %}
+          <option value="{{ l.id }}" {% if l.id == request.user.id %}selected{% endif %}>{{ l.full_name }} ({{ l.network }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Priority</label>
+          <select name="priority" class="wdos-select">
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Due Date</label>
+          <input type="date" name="due_on" class="wdos-input">
+        </div>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Instructions</label>
+        <textarea name="details" class="wdos-textarea" style="min-height:60px;"></textarea>
+      </div>
+      <div style="font-size:12.5px; margin-bottom:12px;">
+        <label style="display:block; margin-bottom:4px;"><input type="checkbox" name="require_response" value="1"> Require written response note</label>
+        <label style="display:block;"><input type="checkbox" name="require_evidence" value="1"> Require evidence link</label>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Create &amp; Assign Task</button>
+    </form>
+  </div>
+
+  <!-- Tasks List -->
+  <div class="wdos-card" style="grid-column: span 2;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Tasks Register ({{ tasks|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Task</th><th>Assignee</th><th>Priority</th><th>Due</th><th>Status</th><th>Inspect</th></tr></thead>
+        <tbody>
+          {% for t in tasks %}
+          <tr>
+            <td><strong>{{ t.title }}</strong><div style="font-size:11.5px; color:#64748b;">{{ t.org_unit.name }}</div></td>
+            <td>{{ t.assigned_to.full_name }}</td>
+            <td><span class="wdos-badge wdos-badge-amber">{{ t.get_priority_display }}</span></td>
+            <td>{{ t.due_on|default:"—" }}</td>
+            <td><span class="wdos-badge wdos-badge-slate">{{ t.get_status_display }}</span></td>
+            <td><a href="{% url 'onboarding:task_detail' t.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Open →</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="wdos-empty">No tasks in this view.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends 'onboarding/base_workspace.html' %}
+{% block workspace_body %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+  <div>
+    <div class="text-xs font-extrabold uppercase tracking-wider text-woddi-600">The Founder's Monday Standard (§6)</div>
+    <h1 class="text-2xl font-extrabold text-slate-900 mt-0.5">WDOS Network Command</h1>
+    <p class="text-sm text-slate-600">Click any KPI tile below to open its live drill-down register.</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="?net=all" class="tab-pill {% if net == 'all' %}active{% endif %}">All Networks</a>
+    <a href="?net=WGMN" class="tab-pill {% if net == 'WGMN' %}active{% endif %}">WGMN</a>
+    <a href="?net=WNNN" class="tab-pill {% if net == 'WNNN' %}active{% endif %}">WNNN</a>
+  </div>
+</div>
+
+<div class="ws-tiles">
+  {% for key, label, val in kpi_cards %}
+  <a href="?net={{ net }}&drill={{ key }}" class="ws-tile {% if drill == key %}border-woddi-600{% endif %}">
+    <b>{{ val }}</b>
+    <span>{{ label }}</span>
+    <small>Click to drill down</small>
+  </a>
+  {% endfor %}
+</div>
+
+{% if drill_rows %}
+<section class="panel border-pink-200">
+  <div class="panelhead"><h2>Drill-Down: {{ drill_title }} ({{ drill_rows|length }})</h2><a href="?net={{ net }}" class="btn-sm">Close Drill-Down</a></div>
+  <ul class="ws-list">
+    {% for r in drill_rows %}
+    <li>
+      <div><strong>{{ r.name }}</strong> <span class="text-slate-500">— {{ r.sub }}</span></div>
+      <a href="{{ r.url }}" class="btn-sm">Open Record →</a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panelhead"><h2>Seated Leaders by Hierarchy Level</h2></div>
+  <div class="space-y-3">
+    {% for lvl_name, cnt in by_level %}
+    <div class="flex items-center justify-between border-b border-slate-100 pb-2 text-sm">
+      <span class="font-bold text-slate-800">{{ lvl_name }}</span>
+      <span class="chip">{{ cnt }} seated</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

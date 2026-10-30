@@ -1,0 +1,366 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">HQ Operations Centre · Field Accountability &amp; Autopilot</span>
+  <h1>HQ Operations Centre</h1>
+  <p>Monitor field leader activity scores (0–100), dispatch continental directives and task batches, generate printable executive reports, and manage 5 automated follow-up rules.</p>
+  <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+    <a href="{% url 'onboarding:ops_tab' 'overview' %}?net={{ net }}" class="wdos-btn {% if subtab == 'overview' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Overview</a>
+    <a href="{% url 'onboarding:ops_tab' 'leaders' %}?net={{ net }}" class="wdos-btn {% if subtab == 'leaders' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Leaders ({{ kpis.leaders }})</a>
+    <a href="{% url 'onboarding:ops_tab' 'activity' %}?net={{ net }}" class="wdos-btn {% if subtab == 'activity' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Activity Feed</a>
+    <a href="{% url 'onboarding:ops_tab' 'messages' %}?net={{ net }}" class="wdos-btn {% if subtab == 'messages' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Bulk Messages</a>
+    <a href="{% url 'onboarding:ops_tab' 'tasks' %}?net={{ net }}" class="wdos-btn {% if subtab == 'tasks' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Bulk Tasks</a>
+    <a href="{% url 'onboarding:ops_tab' 'reports' %}?net={{ net }}" class="wdos-btn {% if subtab == 'reports' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Printable Report</a>
+    <a href="{% url 'onboarding:ops_tab' 'autopilot' %}?net={{ net }}" class="wdos-btn {% if subtab == 'autopilot' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Autopilot Rules</a>
+  </div>
+</div>
+
+<!-- Network Scope Filter -->
+<div class="wdos-filter-bar" style="justify-content: space-between;">
+  <div class="wdos-tabs" style="margin-bottom: 0; border-bottom: 0;">
+    <a href="?net=all&q={{ q }}" class="wdos-tab {% if net == 'all' %}active{% endif %}">All Networks</a>
+    <a href="?net=WGMN&q={{ q }}" class="wdos-tab {% if net == 'WGMN' %}active{% endif %}">WGMN (Women 30+)</a>
+    <a href="?net=WNNN&q={{ q }}" class="wdos-tab {% if net == 'WNNN' %}active{% endif %}">WNNN (Nurture 18–29)</a>
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <a href="?net={{ net }}&export=csv" class="wdos-btn wdos-btn-outline wdos-btn-sm">Export Leaders CSV</a>
+    <button type="button" onclick="window.print()" class="wdos-btn wdos-btn-outline wdos-btn-sm">Print / Save PDF</button>
+  </div>
+</div>
+
+<!-- 8 Operational KPI Cards -->
+<div class="wdos-kpi-grid">
+  <div class="wdos-kpi"><div class="num">{{ kpis.leaders }}</div><div class="lbl">Seated Leaders</div></div>
+  <div class="wdos-kpi"><div class="num" style="color:#065f46;">{{ kpis.active7 }}</div><div class="lbl">Active (Last 7d)</div></div>
+  <div class="wdos-kpi"><div class="num" style="color:#b91c1c;">{{ kpis.never }}</div><div class="lbl">Never Signed In</div></div>
+  <div class="wdos-kpi"><div class="num" style="color:#b45309;">{{ kpis.onboarding_pending }}</div><div class="lbl">Onboarding Pending</div></div>
+  <div class="wdos-kpi"><div class="num">{{ kpis.avg_score }}<span style="font-size:14px;">/100</span></div><div class="lbl">Avg Activity Score</div></div>
+  <div class="wdos-kpi"><div class="num" style="color:#b91c1c;">{{ kpis.tasks_overdue }}</div><div class="lbl">Tasks Overdue</div></div>
+  <div class="wdos-kpi"><div class="num" style="color:#b45309;">{{ kpis.reports_overdue }}</div><div class="lbl">Reports Pending</div></div>
+  <div class="wdos-kpi"><div class="num">{{ kpis.not_accepted }}</div><div class="lbl">Appointment Pending</div></div>
+</div>
+
+{% if selected_leader %}
+<div class="wdos-card" style="border: 2px solid #047857; background: #f0fdf4;">
+  <div class="wdos-card-head">
+    <div>
+      <h2 class="wdos-card-title">Leader Accountability Drawer: {{ selected_leader.full_name }}</h2>
+      <div class="wdos-card-sub">{{ selected_leader.email }} · {{ selected_leader.network }} · {{ selected_leader.country }}</div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <a href="{% url 'onboarding:view_as' selected_leader.id %}" class="wdos-btn wdos-btn-primary wdos-btn-sm">View As {{ selected_leader.first_name }}</a>
+      <a href="{% url 'onboarding:member_detail' selected_leader.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Full 360° Record</a>
+      <a href="?net={{ net }}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Close</a>
+    </div>
+  </div>
+  <div class="wdos-grid-3">
+    <div><strong>Unit:</strong> {{ selected_leader.org_unit.name|default:"Unassigned" }}</div>
+    <div><strong>Status:</strong> {{ selected_leader.get_status_display }}</div>
+    <div><strong>Last Signed In:</strong> {{ selected_leader.last_login|date:"M d, Y H:i"|default:"Never" }}</div>
+  </div>
+</div>
+{% endif %}
+
+{% if subtab == 'overview' or subtab == 'leaders' %}
+<div class="wdos-card">
+  <div class="wdos-card-head">
+    <div>
+      <h2 class="wdos-card-title">Leader Accountability &amp; Activity Score Register</h2>
+      <div class="wdos-card-sub">Score formula: Signed in (15) + Recent 7d (15) + Accepted seat (15) + Onboarding pack (20) + Tasks done (15) + Reports filed (15) + Profile complete (5)</div>
+    </div>
+    <form method="get" style="display:flex; gap:8px;">
+      <input type="hidden" name="net" value="{{ net }}">
+      <input type="text" name="q" value="{{ q }}" class="wdos-input" placeholder="Search name, email, country..." style="width:240px;">
+      <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Search</button>
+    </form>
+  </div>
+  <div class="wdos-table-wrap">
+    <table class="wdos-table">
+      <thead>
+        <tr>
+          <th>Leader</th>
+          <th>Network</th>
+          <th>Seat &amp; Unit</th>
+          <th>Score (0–100)</th>
+          <th>Onboarding</th>
+          <th>Seat Accepted</th>
+          <th>Last Login</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in leader_rows %}
+        <tr>
+          <td>
+            <strong>{{ r.profile.full_name }}</strong>
+            <div style="font-size:11.5px; color:#64748b;">{{ r.profile.email }}</div>
+          </td>
+          <td><span class="wdos-badge {% if r.profile.network == 'WGMN' %}wdos-badge-wgmn{% else %}wdos-badge-wnnn{% endif %}">{{ r.profile.network }}</span></td>
+          <td>
+            {% if r.seat %}
+              <strong>{{ r.seat.network_title }}</strong>
+              <div style="font-size:11.5px; color:#64748b;">{{ r.seat.org_unit.name }}</div>
+            {% else %}
+              <span style="color:#64748b;">{{ r.profile.org_unit.name|default:"—" }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="wdos-badge {% if r.score >= 70 %}wdos-badge-green{% elif r.score >= 40 %}wdos-badge-amber{% else %}wdos-badge-red{% endif %}">
+              {{ r.score }} / 100
+            </span>
+          </td>
+          <td>
+            {% if r.onboarded %}
+              <span class="wdos-badge wdos-badge-green">10/10 Done</span>
+            {% else %}
+              <span class="wdos-badge wdos-badge-amber">In Progress</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.accepted %}
+              <span class="wdos-badge wdos-badge-green">Accepted</span>
+            {% else %}
+              <span class="wdos-badge wdos-badge-slate">Pending</span>
+            {% endif %}
+          </td>
+          <td>{{ r.profile.last_login|date:"M d, Y"|default:"Never" }}</td>
+          <td style="display:flex; gap:6px;">
+            <a href="?net={{ net }}&leader={{ r.profile.id }}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Inspect</a>
+            <a href="{% url 'onboarding:view_as' r.profile.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">View As</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="wdos-empty">No leaders match the current filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if subtab == 'activity' %}
+<div class="wdos-card">
+  <div class="wdos-card-head">
+    <h2 class="wdos-card-title">Live Operational Audit &amp; Activity Feed</h2>
+  </div>
+  <div class="wdos-table-wrap">
+    <table class="wdos-table">
+      <thead>
+        <tr><th>Timestamp</th><th>Actor</th><th>Action</th><th>Entity</th><th>Summary</th></tr>
+      </thead>
+      <tbody>
+        {% for log in audit_feed %}
+        <tr>
+          <td>{{ log.created_at|date:"M d, Y H:i" }}</td>
+          <td>{{ log.actor.full_name|default:"System" }}</td>
+          <td><span class="wdos-badge wdos-badge-slate">{{ log.action }}</span></td>
+          <td>{{ log.entity_type }}</td>
+          <td>{{ log.summary }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="wdos-empty">No recent audit events recorded.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if subtab == 'messages' %}
+<div class="wdos-grid-2">
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:12px;">Dispatch Bulk HQ Message to Leaders</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="ops_send_message">
+      <div class="wdos-field">
+        <label class="wdos-label">Target Network</label>
+        <select name="target_net" class="wdos-select">
+          <option value="all">All Seated Leaders (WGMN + WNNN)</option>
+          <option value="WGMN">WGMN Leaders Only</option>
+          <option value="WNNN">WNNN Leaders Only</option>
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Subject Line</label>
+        <input type="text" name="subject" class="wdos-input" placeholder="e.g. Monthly Governance & Reporting Directive" required>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Message Body</label>
+        <textarea name="body" class="wdos-textarea" placeholder="Write the directive or operational update..." required></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Send Message Batch</button>
+    </form>
+  </div>
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:12px;">Recent Message Dispatches</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Batch</th><th>Recipient</th><th>Subject</th><th>Read</th></tr></thead>
+        <tbody>
+          {% for m in sent_messages %}
+          <tr>
+            <td><code>{{ m.batch_id }}</code></td>
+            <td>{{ m.recipient.full_name }}</td>
+            <td>{{ m.subject }}</td>
+            <td>{% if m.read_at %}<span class="wdos-badge wdos-badge-green">Read</span>{% else %}<span class="wdos-badge wdos-badge-amber">Unread</span>{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="wdos-empty">No bulk messages sent yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if subtab == 'tasks' %}
+<div class="wdos-grid-2">
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:12px;">Assign Bulk Operational Task Batch</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="ops_assign_task">
+      <div class="wdos-field">
+        <label class="wdos-label">Target Network</label>
+        <select name="target_net" class="wdos-select">
+          <option value="all">All Seated Leaders</option>
+          <option value="WGMN">WGMN Leaders</option>
+          <option value="WNNN">WNNN Leaders</option>
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Task Title</label>
+        <input type="text" name="title" class="wdos-input" placeholder="e.g. Submit Q2 Country Mobilisation Plan" required>
+      </div>
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Priority</label>
+          <select name="priority" class="wdos-select">
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+            <option value="normal">Normal</option>
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Due Date</label>
+          <input type="date" name="due_on" class="wdos-input">
+        </div>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Task Instructions</label>
+        <textarea name="details" class="wdos-textarea" placeholder="Deliverables and evidence required..."></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Assign Task Batch</button>
+    </form>
+  </div>
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:12px;">Dispatched Task Batches</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Batch</th><th>Assignee</th><th>Title</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for t in task_batches %}
+          <tr>
+            <td><code>{{ t.batch_id }}</code></td>
+            <td>{{ t.assigned_to.full_name }}</td>
+            <td><a href="{% url 'onboarding:task_detail' t.id %}">{{ t.title }}</a></td>
+            <td><span class="wdos-badge wdos-badge-slate">{{ t.get_status_display }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="wdos-empty">No bulk task batches assigned yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if subtab == 'reports' %}
+<div class="wdos-card" style="border-top: 4px solid #064e3b;">
+  <div class="wdos-card-head">
+    <div>
+      <span class="wdos-kicker">Executive Operations Brief · Printable A4 Summary</span>
+      <h2 class="wdos-card-title">WDOS Continental Leadership &amp; Operations Report</h2>
+    </div>
+    <button type="button" onclick="window.print()" class="wdos-btn wdos-btn-primary wdos-btn-sm">Print A4 Executive Report</button>
+  </div>
+  <p style="font-size:13.5px; color:#334155; line-height:1.6;">
+    Across <strong>{{ kpis.leaders }}</strong> seated field leaders, the average operational activity score stands at <strong>{{ kpis.avg_score }}/100</strong>.
+    <strong>{{ kpis.active7 }}</strong> leaders signed in within the past 7 days, while <strong>{{ kpis.onboarding_pending }}</strong> remain in onboarding and <strong>{{ kpis.never }}</strong> require first-sign-in activation follow-up.
+  </p>
+  <div class="wdos-table-wrap" style="margin-top:14px;">
+    <table class="wdos-table">
+      <thead><tr><th>Leader</th><th>Network</th><th>Country</th><th>Role</th><th>Score</th><th>Onboarding</th></tr></thead>
+      <tbody>
+        {% for r in leader_rows %}
+        <tr>
+          <td><strong>{{ r.profile.full_name }}</strong></td>
+          <td>{{ r.profile.network }}</td>
+          <td>{{ r.profile.country }}</td>
+          <td>{% if r.seat %}{{ r.seat.network_title }}{% else %}Leader{% endif %}</td>
+          <td>{{ r.score }}/100</td>
+          <td>{% if r.onboarded %}Complete{% else %}Pending{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if subtab == 'autopilot' %}
+<div class="wdos-card">
+  <div class="wdos-card-head">
+    <div>
+      <h2 class="wdos-card-title">5 Operational Autopilot Rules</h2>
+      <div class="wdos-card-sub">Automated nudges for inactive accounts, onboarding stalls, overdue tasks, unaccepted appointments, and dormant leaders.</div>
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="run_autopilot">
+      <button type="submit" class="wdos-btn wdos-btn-gold wdos-btn-sm">Run Active Autopilot Rules Now</button>
+    </form>
+  </div>
+  <div class="wdos-table-wrap">
+    <table class="wdos-table">
+      <thead>
+        <tr><th>Rule Code</th><th>Name &amp; Description</th><th>Threshold (Days)</th><th>Status</th><th>Last Run</th><th>Toggle</th></tr>
+      </thead>
+      <tbody>
+        {% for rule in autopilot_rules %}
+        <tr>
+          <td><code>{{ rule.code }}</code></td>
+          <td>
+            <strong>{{ rule.name }}</strong>
+            <div style="font-size:12px; color:#64748b;">{{ rule.description }}</div>
+          </td>
+          <td>{{ rule.threshold_days }} days</td>
+          <td>
+            {% if rule.is_active %}
+              <span class="wdos-badge wdos-badge-green">ACTIVE</span>
+            {% else %}
+              <span class="wdos-badge wdos-badge-slate">PAUSED</span>
+            {% endif %}
+          </td>
+          <td>{{ rule.last_run_at|date:"M d, Y H:i"|default:"Never" }}</td>
+          <td>
+            <form method="post" style="display:flex; gap:6px; align-items:center;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="toggle_autopilot">
+              <input type="hidden" name="rule_code" value="{{ rule.code }}">
+              <input type="number" name="threshold_days" value="{{ rule.threshold_days }}" class="wdos-input" style="width:70px; padding:4px 8px;">
+              <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">{% if rule.is_active %}Pause{% else %}Enable{% endif %}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

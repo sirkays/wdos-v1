@@ -1,0 +1,54 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Programmes, Projects &amp; Impact</span>
+  <h1>Programmes, Events &amp; Beneficiaries</h1>
+  <p>Manage WODDI strategic programmes across Maternal Health, Youth Mentorship, Economic Empowerment, and Community Welfare.</p>
+</div>
+
+<div class="wdos-grid-2">
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Launch New Programme</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_programme">
+      <div class="wdos-field">
+        <label class="wdos-label">Programme Name</label>
+        <input type="text" name="name" class="wdos-input" required>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Strategic Pillar</label>
+        <input type="text" name="pillar" value="Women & Youth Empowerment" class="wdos-input">
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Summary</label>
+        <textarea name="summary" class="wdos-textarea" style="min-height:60px;"></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Create Programme</button>
+    </form>
+  </div>
+
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Active Programmes ({{ programmes|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Code</th><th>Programme</th><th>Pillar</th><th>Unit</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for p in programmes %}
+          <tr>
+            <td><code>{{ p.code }}</code></td>
+            <td><strong>{{ p.name }}</strong></td>
+            <td>{{ p.pillar }}</td>
+            <td>{{ p.org_unit.name }}</td>
+            <td><span class="wdos-badge wdos-badge-green">{{ p.status }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="wdos-empty">No programmes registered yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

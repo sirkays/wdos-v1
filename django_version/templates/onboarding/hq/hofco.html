@@ -1,0 +1,103 @@
+{% extends 'onboarding/base_workspace.html' %}
+{% load static %}
+{% block workspace_body %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+  <div>
+    <div class="text-xs font-extrabold uppercase tracking-wider text-woddi-600">Reference Screen 1 · Head of Field & Country Operations</div>
+    <h1 class="text-2xl font-extrabold text-slate-900 mt-0.5">HOFCO Operations Dashboard</h1>
+    <p class="text-sm text-slate-600 mt-0.5">Field coordination, country leadership coverage, WGMN & WNNN performance, and volunteer strategic engagement.</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-2">
+    <a href="?period=today&net={{ net }}" class="tab-pill {% if period == 'today' %}active{% endif %}">Today</a>
+    <a href="?period=week&net={{ net }}" class="tab-pill {% if period == 'week' %}active{% endif %}">Week</a>
+    <a href="?period=month&net={{ net }}" class="tab-pill {% if period == 'month' %}active{% endif %}">Month</a>
+    <a href="?period=quarter&net={{ net }}" class="tab-pill {% if period == 'quarter' %}active{% endif %}">Quarter</a>
+    <a href="?period=ytd&net={{ net }}" class="tab-pill {% if period == 'ytd' %}active{% endif %}">YTD</a>
+  </div>
+</div>
+
+<!-- Row 1: 6 KPI Tiles -->
+<div class="ws-tiles">
+  <div class="ws-tile"><b>{{ kpis.countries_op }}</b><span>Countries Operational</span></div>
+  <div class="ws-tile lemon"><b>{{ kpis.coverage_pct }}%</b><span>Leadership Coverage</span></div>
+  <div class="ws-tile"><b>{{ kpis.active_leaders }}</b><span>Active Leaders</span></div>
+  <div class="ws-tile"><b>{{ kpis.priority_vacancies }}</b><span>Priority Vacancies</span></div>
+  <div class="ws-tile"><b>{{ kpis.reports_outstanding }}</b><span>Reports Outstanding</span></div>
+  <div class="ws-tile lemon"><b>{{ kpis.activities_period }}</b><span>Activities in Period</span></div>
+</div>
+
+<!-- Row 1b: WGMN & WNNN Hero Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+  <div class="panel mb-0 border-pink-200 bg-gradient-to-br from-white to-pink-50">
+    <div class="flex items-center justify-between">
+      <div>
+        <span class="chip">WGMN · 30+</span>
+        <h2 class="text-lg font-extrabold text-slate-900 mt-1">Good Mother Network</h2>
+        <p class="text-xs text-slate-600">{{ wgmn_stats.leaders }} Seated Leaders · {{ wgmn_stats.members }} Members · {{ wgmn_stats.activations }} Activations</p>
+      </div>
+      <a href="{% url 'onboarding:network_hq' 'WGMN' %}" class="btn-sm primary">View WGMN Details →</a>
+    </div>
+  </div>
+  <div class="panel mb-0 border-lime-200 bg-gradient-to-br from-white to-lime-50">
+    <div class="flex items-center justify-between">
+      <div>
+        <span class="chip green">WNNN · 18–29</span>
+        <h2 class="text-lg font-extrabold text-slate-900 mt-1">Nurture NextGen Network</h2>
+        <p class="text-xs text-slate-600">{{ wnnn_stats.leaders }} Seated Leaders · {{ wnnn_stats.members }} Members · {{ wnnn_stats.activations }} Activations</p>
+      </div>
+      <a href="{% url 'onboarding:network_hq' 'WNNN' %}" class="btn-sm lemon">View WNNN Details →</a>
+    </div>
+  </div>
+</div>
+
+<!-- Row 2: Attention Required Table -->
+<section class="panel">
+  <div class="panelhead"><h2>Attention Required</h2><a href="{% url 'onboarding:ops' %}" class="btn-sm">Open Operations Centre</a></div>
+  {% if attention_items %}
+  <table class="data-table">
+    <thead>
+      <tr><th>Issue</th><th>Network</th><th>Country</th><th>Level</th><th>Priority</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+      {% for item in attention_items %}
+      <tr>
+        <td class="font-bold">{{ item.issue }}</td>
+        <td><span class="chip">{{ item.network }}</span></td>
+        <td>{{ item.country }}</td>
+        <td>{{ item.level }}</td>
+        <td><span class="chip red">{{ item.priority }}</span></td>
+        <td><a href="{{ item.url }}" class="btn-sm">Inspect →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="ws-empty">All national seats are currently covered.</p>
+  {% endif %}
+</section>
+
+<!-- Row 5: Country Performance Table -->
+<section class="panel">
+  <div class="panelhead"><h2>Country Performance & Responsiveness</h2><a href="{% url 'onboarding:engagement' %}" class="btn-sm">Volunteer Engagement Tracker</a></div>
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr><th>Country</th><th>Country Rep / Lead</th><th>Seated Leaders</th><th>Reports</th><th>Programme Events</th><th>Status</th><th>Drill Down</th></tr>
+      </thead>
+      <tbody>
+        {% for row in country_rows %}
+        <tr>
+          <td class="font-bold">{{ row.unit.name }}</td>
+          <td>{% if row.cr %}{{ row.cr.full_name }}{% else %}<span class="chip red">Vacant</span>{% endif %}</td>
+          <td>{{ row.leaders_cnt }}</td>
+          <td>{{ row.reports_cnt }}</td>
+          <td>{{ row.events_cnt }}</td>
+          <td><span class="chip {% if row.cr %}green{% else %}amber{% endif %}">{{ row.status }}</span></td>
+          <td><a href="{% url 'onboarding:country_hq' row.unit.id %}" class="btn-sm">Open Country →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

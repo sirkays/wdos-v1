@@ -1,0 +1,143 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Governance &amp; Hierarchy · Continental -> Country -> State -> LGA -> Community Cluster -> Chapter</span>
+  <h1>Organisation Hierarchy &amp; Seat Management</h1>
+  <p>Inspect the 6-level WODDI governance tree, create subordinate units within your jurisdiction, appoint leaders, and record audited seat handovers.</p>
+</div>
+
+<div class="wdos-grid-3">
+  <!-- Left: Hierarchy Tree List -->
+  <div class="wdos-card" style="grid-column: span 1;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Organisational Tree ({{ units|length }})</h2>
+    <div style="max-height:620px; overflow-y:auto;">
+      {% for u in units %}
+      <a href="{% url 'onboarding:organisation_unit' u.id %}" style="display:block; padding:8px 10px; border-radius:8px; text-decoration:none; margin-bottom:4px; {% if selected and selected.id == u.id %}background:#ecfdf5; color:#065f46; font-weight:700; border:1px solid #a7f3d0;{% else %}color:#334155;{% endif %}">
+        <div style="font-size:13px;">{{ u.name }}</div>
+        <div style="font-size:11px; color:#64748b;">{{ u.get_level_display }} · {{ u.country }}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Right: Selected Unit Details & Controls -->
+  <div style="grid-column: span 2;">
+    {% if selected %}
+    <div class="wdos-card">
+      <div class="wdos-card-head">
+        <div>
+          <span class="wdos-kicker">{{ selected.get_level_display }} · Code: {{ selected.code }}</span>
+          <h2 class="wdos-card-title">{{ selected.name }} ({{ selected.country }})</h2>
+          {% if selected.parent %}
+          <div class="wdos-card-sub">Reports to: <a href="{% url 'onboarding:organisation_unit' selected.parent.id %}">{{ selected.parent.name }}</a></div>
+          {% endif %}
+        </div>
+        <span class="wdos-badge wdos-badge-green">{{ selected.network }}</span>
+      </div>
+
+      <!-- Active Seats at This Unit -->
+      <h3 style="font-size:14px; margin:12px 0 8px;">Seated Leadership at {{ selected.name }}</h3>
+      <div class="wdos-table-wrap" style="margin-bottom:16px;">
+        <table class="wdos-table">
+          <thead><tr><th>Leader</th><th>Role Title</th><th>Status</th><th>End Seat (Audited)</th></tr></thead>
+          <tbody>
+            {% for r in unit_roles %}
+            <tr>
+              <td><a href="{% url 'onboarding:member_detail' r.profile.id %}"><strong>{{ r.profile.full_name }}</strong></a></td>
+              <td>{{ r.network_title }}</td>
+              <td><span class="wdos-badge wdos-badge-green">{{ r.appointment_status }}</span></td>
+              <td>
+                {% if can_manage %}
+                <form method="post" style="display:flex; gap:6px;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="end_role">
+                  <input type="hidden" name="assignment_id" value="{{ r.id }}">
+                  <input type="text" name="reason" class="wdos-input" placeholder="Mandatory reason (min 5 chars)" required style="width:190px; padding:4px 8px;">
+                  <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">End Seat</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="wdos-empty">This unit currently has no seated leaders (Vacant).</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if can_manage %}
+      <div class="wdos-grid-2">
+        <!-- Create Subordinate Unit -->
+        <div style="padding:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+          <h3 style="font-size:14px; margin:0 0 10px;">Create Subordinate Unit under {{ selected.name }}</h3>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_unit">
+            <div class="wdos-field">
+              <label class="wdos-label">Unit Name</label>
+              <input type="text" name="name" class="wdos-input" placeholder="e.g. Ikeja Chapter" required>
+            </div>
+            <div class="wdos-grid-2">
+              <div class="wdos-field">
+                <label class="wdos-label">Level</label>
+                <select name="level" class="wdos-select">
+                  {% for code, label in levels %}
+                  <option value="{{ code }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="wdos-field">
+                <label class="wdos-label">Network</label>
+                <select name="network" class="wdos-select">
+                  <option value="BOTH">Both Networks</option>
+                  <option value="WGMN">WGMN</option>
+                  <option value="WNNN">WNNN</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Create Child Unit</button>
+          </form>
+        </div>
+
+        <!-- Appoint Leader to Unit -->
+        <div style="padding:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+          <h3 style="font-size:14px; margin:0 0 10px;">Appoint Leader to {{ selected.name }}</h3>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="appoint_leader">
+            <div class="wdos-field">
+              <label class="wdos-label">Select Person</label>
+              <select name="profile_id" class="wdos-select">
+                {% for p in all_profiles %}
+                <option value="{{ p.id }}">{{ p.full_name }} ({{ p.network }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="wdos-grid-2">
+              <div class="wdos-field">
+                <label class="wdos-label">Role</label>
+                <select name="role" class="wdos-select">
+                  {% for code, label in roles %}
+                  <option value="{{ code }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="wdos-field">
+                <label class="wdos-label">Capacity</label>
+                <select name="appointment_status" class="wdos-select">
+                  <option value="appointed">Appointed</option>
+                  <option value="acting">Acting</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Appoint to Seat</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

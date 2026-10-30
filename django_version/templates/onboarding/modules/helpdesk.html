@@ -1,0 +1,99 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">HQ Helpdesk &amp; Support Centre</span>
+  <h1>Support Tickets &amp; Inquiries</h1>
+  <p>Submit technical, governance, or operational support requests and track responses from the HQ Support Team.</p>
+</div>
+
+{% if selected_ticket %}
+<div class="wdos-card" style="border: 2px solid #047857;">
+  <div class="wdos-card-head">
+    <div>
+      <span class="wdos-kicker">Ticket · {{ selected_ticket.category|upper }} · Requested by {{ selected_ticket.requester.full_name }}</span>
+      <h2 class="wdos-card-title">{{ selected_ticket.subject }}</h2>
+    </div>
+    <a href="{% url 'onboarding:helpdesk' %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Close Ticket</a>
+  </div>
+  <p style="font-size:13.5px; color:#334155;">{{ selected_ticket.description }}</p>
+
+  {% for r in selected_ticket.replies.all %}
+  <div style="padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:13px;">
+    <strong>{{ r.author.full_name }}:</strong> {{ r.body }}
+  </div>
+  {% endfor %}
+
+  <form method="post" style="margin-top:12px;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="reply_ticket">
+    <div class="wdos-grid-2">
+      <div class="wdos-field">
+        <label class="wdos-label">Status</label>
+        <select name="status" class="wdos-select">
+          <option value="open" {% if selected_ticket.status == 'open' %}selected{% endif %}>Open</option>
+          <option value="in_progress" {% if selected_ticket.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+          <option value="resolved" {% if selected_ticket.status == 'resolved' %}selected{% endif %}>Resolved</option>
+          <option value="closed" {% if selected_ticket.status == 'closed' %}selected{% endif %}>Closed</option>
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Reply Message</label>
+        <input type="text" name="body" class="wdos-input" required>
+      </div>
+    </div>
+    <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Post Reply</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="wdos-grid-3">
+  <div class="wdos-card" style="grid-column: span 1;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Open Support Ticket</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_ticket">
+      <div class="wdos-field">
+        <label class="wdos-label">Category</label>
+        <select name="category" class="wdos-select">
+          <option value="technical">Portal / Technical Support</option>
+          <option value="governance">Governance &amp; Role</option>
+          <option value="reporting">Reporting &amp; Templates</option>
+          <option value="general">General Inquiry</option>
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Subject</label>
+        <input type="text" name="subject" class="wdos-input" required>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Details</label>
+        <textarea name="description" class="wdos-textarea" required></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Submit Ticket</button>
+    </form>
+  </div>
+
+  <div class="wdos-card" style="grid-column: span 2;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Tickets Register ({{ tickets|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Subject</th><th>Requester</th><th>Category</th><th>Status</th><th>Inspect</th></tr></thead>
+        <tbody>
+          {% for tk in tickets %}
+          <tr>
+            <td><strong>{{ tk.subject }}</strong></td>
+            <td>{{ tk.requester.full_name }}</td>
+            <td>{{ tk.category }}</td>
+            <td><span class="wdos-badge wdos-badge-slate">{{ tk.status }}</span></td>
+            <td><a href="{% url 'onboarding:helpdesk_detail' tk.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Open →</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="wdos-empty">No support tickets filed.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

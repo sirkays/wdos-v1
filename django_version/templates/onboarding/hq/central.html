@@ -1,0 +1,142 @@
+{% extends 'onboarding/base_workspace.html' %}
+{% load static %}
+{% block workspace_body %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+  <div>
+    <div class="text-xs font-extrabold uppercase tracking-wider text-woddi-600">WDOS Central Admin · Founder & Executive Command</div>
+    <h1 class="text-2xl font-extrabold text-slate-900 mt-0.5">WODDI HQ Command Centre</h1>
+    <p class="text-sm text-slate-600 mt-0.5">Continental oversight of countries, dual networks (WGMN & WNNN), leadership seats, recruitment funnels, and accountability.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="?net=all" class="tab-pill {% if net == 'all' %}active{% endif %}">All Networks</a>
+    <a href="?net=WGMN" class="tab-pill {% if net == 'WGMN' %}active{% endif %}">WGMN (30+)</a>
+    <a href="?net=WNNN" class="tab-pill {% if net == 'WNNN' %}active{% endif %}">WNNN (18–29)</a>
+  </div>
+</div>
+
+<!-- 9 Executive KPI Tiles -->
+<div class="ws-tiles">
+  <a href="{% url 'onboarding:organisation' %}" class="ws-tile"><b>{{ kpis.countries_represented }}</b><span>Countries Represented</span><small>of 54 African nations</small></a>
+  <a href="{% url 'onboarding:organisation' %}" class="ws-tile"><b>{{ kpis.need_strengthening }}</b><span>Need Strengthening</span><small>CR or state coverage gaps</small></a>
+  <div class="ws-tile navy"><b>{{ kpis.not_represented }}</b><span>Not Yet Represented</span><small>Expansion target countries</small></div>
+  <a href="{% url 'onboarding:ops_tab' 'leaders' %}" class="ws-tile lemon"><b>{{ kpis.leaders_seated }}</b><span>Leaders Seated</span><small>{{ kpis.active_30d }} active in last 30d</small></a>
+  <a href="{% url 'onboarding:structure' %}?level=country&status=vacant" class="ws-tile"><b>{{ kpis.vacant_country }}</b><span>Vacant Country Seats</span><small>Priority national posts</small></a>
+  <a href="{% url 'onboarding:structure' %}?level=state_region&status=vacant" class="ws-tile"><b>{{ kpis.vacant_state }}</b><span>Vacant State Seats</span><small>State / Regional posts</small></a>
+  <a href="{% url 'onboarding:reporting_tab' 'review' %}" class="ws-tile"><b>{{ kpis.reports_due }}</b><span>Reports Due / In Review</span><small>Field accountability queue</small></a>
+  <a href="{% url 'onboarding:hq_activation' %}" class="ws-tile"><b>{{ kpis.approval_requests }}</b><span>Approval Requests</span><small>Applications & assessments</small></a>
+  <a href="{% url 'onboarding:programmes' %}" class="ws-tile lemon"><b>{{ kpis.programmes_running }}</b><span>Programmes Running</span><small>WIWS, WGMN & WNNN</small></a>
+</div>
+
+<!-- Executive Provisioning Strip -->
+<div class="panel flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h2 class="text-sm font-extrabold text-slate-900">Executive Provisioning & Directory Actions</h2>
+    <p class="text-xs text-slate-500">One-click directory login creation, seat assignment from master lists, and activation readiness review.</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="bulk_create_logins"><button type="submit" class="btn-sm primary">Bulk Create Directory Logins</button></form>
+    <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="seat_from_lists"><button type="submit" class="btn-sm lemon">Seat From Master Lists</button></form>
+    <a href="{% url 'onboarding:hq_activation' %}" class="btn-sm">Activation & Readiness</a>
+    <a href="{% url 'onboarding:ops' %}" class="btn-sm">Operations Centre</a>
+    <a href="{% url 'onboarding:accounts_manage' %}" class="btn-sm">Accounts & Seats</a>
+  </div>
+</div>
+
+<!-- Row 1: Immediate Attention + Dual Funnels + Africa Coverage Map -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+  <section class="panel mb-0">
+    <div class="panelhead"><h2>Immediate Attention</h2><span class="chip red">Action Queue</span></div>
+    <ul class="ws-list">
+      {% for item in attention %}
+      <li>
+        <a href="{{ item.url }}" class="font-semibold text-slate-800 hover:text-woddi-600 no-underline">{{ item.label }}</a>
+        <span class="chip {{ item.tone }}">{{ item.count }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel mb-0">
+    <div class="panelhead"><h2>Dual Recruitment Funnels</h2><a href="{% url 'onboarding:hq_activation' %}" class="text-xs font-bold text-woddi-600 no-underline">Open HQ Activation →</a></div>
+    <div class="mb-4">
+      <div class="text-xs font-extrabold uppercase text-slate-500 mb-2">7-Day Open Call Funnel</div>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">Applications: <strong>{{ funnel_open7.received }}</strong></div>
+        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">In 7-Day Pack: <strong>{{ funnel_open7.activation7 }}</strong></div>
+        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">Completed: <strong>{{ funnel_open7.review }}</strong></div>
+        <div class="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">Selected: <strong>{{ funnel_open7.selected }}</strong></div>
+      </div>
+    </div>
+    <div>
+      <div class="text-xs font-extrabold uppercase text-slate-500 mb-2">3-Day Referral Activation Funnel</div>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">Referral Links: <strong>{{ funnel_ref3.referrals }}</strong></div>
+        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">Started 3-Day: <strong>{{ funnel_ref3.started }}</strong></div>
+        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">Completed: <strong>{{ funnel_ref3.completed }}</strong></div>
+        <div class="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">Selected: <strong>{{ funnel_ref3.selected }}</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel mb-0 flex flex-col justify-between">
+    <div class="panelhead"><h2>Africa Coverage Map</h2><a href="{% url 'onboarding:leadership' %}" class="text-xs font-bold text-woddi-600 no-underline">Continental View →</a></div>
+    <div class="text-center py-2">
+      <img src="{% static 'assets/africa-map.svg' %}" alt="Africa Coverage Map" class="max-h-52 mx-auto">
+    </div>
+    <div class="text-xs text-slate-500 text-center">
+      Active representation across <strong>{{ kpis.countries_represented }}</strong> countries · Click any country row below to drill down.
+    </div>
+  </section>
+</div>
+
+<!-- Row 2: Leadership Ladder -->
+<section class="panel">
+  <div class="panelhead"><h2>Leadership Ladder Across Hierarchy Tiers</h2><a href="{% url 'onboarding:structure' %}" class="btn-sm">Open Structure Explorer</a></div>
+  <div class="space-y-3">
+    {% for tier in ladder %}
+    <div>
+      <div class="flex justify-between text-xs font-bold mb-1">
+        <span>{{ tier.level }}</span>
+        <span>{{ tier.filled }} seated / {{ tier.total }} target seats</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:{% widthratio tier.filled tier.total 100 %}%"></div></div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Row 3: Country Performance Table -->
+<section class="panel">
+  <div class="panelhead"><h2>Country Performance & Representation Table</h2><a href="{% url 'onboarding:organisation' %}" class="btn-sm">Manage Countries & Units</a></div>
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Country</th>
+          <th>Country Representative</th>
+          <th>Deputy CR</th>
+          <th>State Coverage</th>
+          <th>Seated Leaders</th>
+          <th>Compliance</th>
+          <th>Health Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in country_rows %}
+        <tr>
+          <td><a href="{% url 'onboarding:country_hq' row.unit.id %}" class="font-bold text-slate-900 hover:text-woddi-600 no-underline">{{ row.unit.name }} ({{ row.unit.country_iso }})</a></td>
+          <td>{% if row.cr %}{{ row.cr.full_name }}{% else %}<span class="chip red">Vacant</span>{% endif %}</td>
+          <td>{% if row.dcr %}{{ row.dcr.full_name }}{% else %}<span class="chip grey">Vacant</span>{% endif %}</td>
+          <td>{{ row.states_covered }} / {{ row.states_total }} ({{ row.coverage_pct }}%)</td>
+          <td>{{ row.active_leaders }}</td>
+          <td>{{ row.compliance_pct }}%</td>
+          <td>
+            <span class="chip {% if row.health == 'On Track' %}green{% elif row.health == 'Needs Strengthening' %}amber{% else %}red{% endif %}">{{ row.health }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'onboarding/base_workspace.html' %}
+{% block workspace_body %}
+<div class="mb-5">
+  <div class="text-xs font-extrabold uppercase tracking-wider text-woddi-600">HQ Function Homepage · {{ fn|upper }}</div>
+  <h1 class="text-2xl font-extrabold text-slate-900 mt-0.5">{{ fn_label }}</h1>
+  <p class="text-sm text-slate-600 mt-1">{{ spec.focus }}</p>
+</div>
+
+{% if spec.planned %}
+<div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 flex items-center justify-between">
+  <span><strong>Scheduled Architecture Notice:</strong> Dedicated financial ledger sub-modules are tracked in the Planned Architecture Registry.</span>
+  <a href="/workspace/planned/finance/" class="btn-sm">View Finance Blueprint</a>
+</div>
+{% endif %}
+
+<div class="ws-tiles">
+  <div class="ws-tile"><b>{{ stats.open_tasks }}</b><span>Open Tasks</span></div>
+  <div class="ws-tile"><b>{{ stats.pending_apps }}</b><span>Pending Applications</span></div>
+  <div class="ws-tile"><b>{{ stats.open_tickets }}</b><span>Open Helpdesk Tickets</span></div>
+  <div class="ws-tile lemon"><b>{{ stats.active_leaders }}</b><span>Active Seated Leaders</span></div>
+  <div class="ws-tile lemon"><b>{{ stats.programmes }}</b><span>Active Programmes</span></div>
+  <div class="ws-tile"><b>{{ stats.reports_review }}</b><span>Reports Awaiting Review</span></div>
+</div>
+
+<section class="panel">
+  <div class="panelhead"><h2>Quick Actions for {{ fn_label }}</h2></div>
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+    {% for label, url in spec.quick %}
+    <a href="{{ url }}" class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-extrabold text-slate-900 hover:border-woddi-600 hover:text-woddi-600 no-underline">
+      {{ label }} →
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

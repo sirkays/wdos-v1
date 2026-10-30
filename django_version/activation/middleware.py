@@ -1,12 +1,29 @@
-﻿from django.shortcuts import redirect
+from django.shortcuts import redirect
 
 from .views import gate_blocks
 
-ALLOWED = ('/activation/', '/accounts/', '/static/', '/media/', '/admin/', '/api/')
+ALLOWED = (
+    '/activation/',
+    '/accounts/',
+    '/static/',
+    '/media/',
+    '/admin/',
+    '/api/',
+    '/workspace/my/profile/',
+    '/workspace/my/support/',
+    '/workspace/my/settings/',
+    '/workspace/ask/',
+    '/candidate/',
+    '/join/WGMN/',
+    '/join/WNNN/',
+    '/join/wgmn/',
+    '/join/wnnn/',
+    '/referral-join/',
+)
 
 
 class CandidateGateMiddleware:
-    """Candidates are redirected to /activation/ everywhere except profile, help and sign-out."""
+    """Candidates are redirected to /activation/ everywhere except profile, support, settings, ask, help and sign-out."""
     def __init__(self, get_response):
         self.get_response = get_response
 

@@ -1,0 +1,76 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Communications · Multi-Locale Message Library (8 Locales)</span>
+  <h1>Notification &amp; Message Template Studio</h1>
+  <p>Manage official Email, WhatsApp, SMS, and In-App templates across English, French, Portuguese, Arabic, Kiswahili, Hausa, Yorùbá, and Igbo.</p>
+  <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+    {% for code, label in locales %}
+    <a href="?locale={{ code }}" class="wdos-btn wdos-btn-sm {% if locale == code %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">{{ label }} ({{ code }})</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="wdos-grid-3">
+  <div class="wdos-card" style="grid-column: span 1;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Create / Update Template</h2>
+    <form method="post">
+      {% csrf_token %}
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Template Code</label>
+          <input type="text" name="code" class="wdos-input" placeholder="e.g. WELCOME_LEADER" required>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Locale</label>
+          <select name="locale" class="wdos-select">
+            {% for code, label in locales %}
+            <option value="{{ code }}" {% if locale == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Channel</label>
+        <select name="channel" class="wdos-select">
+          <option value="email">Email</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="sms">SMS</option>
+          <option value="in_app">In-App</option>
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Subject Line</label>
+        <input type="text" name="subject" class="wdos-input">
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Template Body</label>
+        <textarea name="body" class="wdos-textarea" required></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Save &amp; Approve Template</button>
+    </form>
+  </div>
+
+  <div class="wdos-card" style="grid-column: span 2;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Templates ({{ templates|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Code</th><th>Locale / Channel</th><th>Subject &amp; Body</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for t in templates %}
+          <tr>
+            <td><code>{{ t.code }}</code></td>
+            <td><span class="wdos-badge wdos-badge-blue">{{ t.locale }}</span> · {{ t.channel }}</td>
+            <td><strong>{{ t.subject }}</strong><div style="font-size:12px; color:#475569;">{{ t.body }}</div></td>
+            <td><span class="wdos-badge wdos-badge-green">{{ t.status }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="wdos-empty">No templates found for this locale.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends 'onboarding/base_workspace.html' %}
+{% load static %}
+{% block workspace_body %}
+<div class="panel {% if net == 'WNNN' %}border-lime-300 bg-gradient-to-r from-lime-50 to-white{% else %}border-pink-200 bg-gradient-to-r from-pink-50 to-white{% endif %}">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <span class="chip {% if net == 'WNNN' %}green{% endif %}">{{ net }} Network Command</span>
+      <h1 class="text-2xl font-extrabold text-slate-900 mt-1">{{ net }} — {{ motto }}</h1>
+      <p class="text-sm text-slate-600">Dedicated single-network operational command across Africa.</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{% url 'onboarding:network_hq' 'WGMN' %}" class="tab-pill {% if net == 'WGMN' %}active{% endif %}">WGMN</a>
+      <a href="{% url 'onboarding:network_hq' 'WNNN' %}" class="tab-pill {% if net == 'WNNN' %}active{% endif %}">WNNN</a>
+    </div>
+  </div>
+</div>
+
+<div class="ws-tiles">
+  <div class="ws-tile"><b>{{ kpis.countries }}</b><span>Operational Countries</span></div>
+  <div class="ws-tile lemon"><b>{{ kpis.leaders }}</b><span>Seated {{ net }} Leaders</span></div>
+  <div class="ws-tile"><b>{{ kpis.members }}</b><span>{{ net }} Members</span></div>
+  <div class="ws-tile"><b>{{ kpis.activations_ref3 }}</b><span>3-Day Referral Activations</span></div>
+  <div class="ws-tile"><b>{{ kpis.activations_open7 }}</b><span>7-Day Open Activations</span></div>
+  <div class="ws-tile"><b>{{ kpis.applications }}</b><span>Applications</span></div>
+</div>
+
+<section class="panel">
+  <div class="panelhead"><h2>Seated {{ net }} Leadership Roster</h2><a href="{% url 'onboarding:structure' %}?net={{ net }}" class="btn-sm">Open in Structure Explorer</a></div>
+  {% if roles %}
+  <table class="data-table">
+    <thead><tr><th>Leader</th><th>Role Title</th><th>Organisational Unit</th><th>Appointment</th><th>Inspect</th></tr></thead>
+    <tbody>
+      {% for r in roles %}
+      <tr>
+        <td class="font-bold">{{ r.profile.full_name }}</td>
+        <td>{{ r.network_title }}</td>
+        <td>{{ r.org_unit.name }}</td>
+        <td><span class="chip green">{{ r.appointment_status|title }}</span></td>
+        <td><a href="{% url 'onboarding:view_as' r.profile.id %}" class="btn-sm">View As</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="ws-empty">No seated leaders for {{ net }} yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

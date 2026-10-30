@@ -1,0 +1,85 @@
+{% extends "onboarding/base_workspace.html" %}
+{% load static %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Continental Leadership Atlas · WGMN &amp; WNNN</span>
+  <h1>Country &amp; State Leaders Atlas</h1>
+  <p>Explore WODDI's continental footprint across Africa and the Diaspora, inspect Country Representatives and State Coordinators, and nominate exemplary leaders for Spotlight recognition.</p>
+</div>
+
+<div class="wdos-grid-3">
+  <!-- Living Continental Footprint & Spotlight -->
+  <div class="wdos-card" style="grid-column: span 1;">
+    <h2 class="wdos-card-title" style="margin-bottom:8px;">Continental Footprint</h2>
+    <div style="text-align:center; padding:12px; background:#f8fafc; border-radius:10px; margin-bottom:14px;">
+      <img src="{% static 'assets/africa-map.svg' %}" alt="WODDI Continental Map" style="max-width:100%; height:220px; object-fit:contain;">
+    </div>
+    <h3 style="font-size:14px; margin-bottom:8px;">Nominate a Leader for Spotlight</h3>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="nominate_spotlight">
+      <div class="wdos-field">
+        <label class="wdos-label">Select Leader</label>
+        <select name="nominee_id" class="wdos-select">
+          {% for l in leaders %}
+          <option value="{{ l.id }}">{{ l.full_name }} ({{ l.country }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Citation</label>
+        <input type="text" name="citation" class="wdos-input" placeholder="e.g. Outstanding Chapter Mobilisation" required>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Key Achievements</label>
+        <textarea name="achievements" class="wdos-textarea" style="min-height:60px;"></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-gold wdos-btn-sm">Submit Spotlight Nomination</button>
+    </form>
+  </div>
+
+  <!-- Leaders Directory Table -->
+  <div class="wdos-card" style="grid-column: span 2;">
+    <div class="wdos-card-head">
+      <h2 class="wdos-card-title">Seated Leaders Directory ({{ leaders|length }})</h2>
+      <form method="get" style="display:flex; gap:6px;">
+        <select name="net" class="wdos-select" style="width:130px;">
+          <option value="all" {% if net == 'all' %}selected{% endif %}>All Networks</option>
+          <option value="WGMN" {% if net == 'WGMN' %}selected{% endif %}>WGMN</option>
+          <option value="WNNN" {% if net == 'WNNN' %}selected{% endif %}>WNNN</option>
+        </select>
+        <input type="text" name="q" value="{{ q }}" class="wdos-input" placeholder="Search leader, country..." style="width:180px;">
+        <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Filter</button>
+      </form>
+    </div>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Leader</th><th>Network</th><th>Country &amp; Unit</th><th>Seat Title</th><th>Profile</th></tr></thead>
+        <tbody>
+          {% for l in leaders %}
+          <tr>
+            <td>
+              <strong>{{ l.full_name }}</strong>
+              <div style="font-size:11.5px; color:#64748b;">{{ l.email }}</div>
+            </td>
+            <td><span class="wdos-badge {% if l.network == 'WGMN' %}wdos-badge-wgmn{% else %}wdos-badge-wnnn{% endif %}">{{ l.network }}</span></td>
+            <td>{{ l.country }} · {{ l.org_unit.name|default:"—" }}</td>
+            <td>
+              {% for r in l.get_roles %}
+                <div>{{ r.network_title }}</div>
+              {% empty %}
+                Leader
+              {% endfor %}
+            </td>
+            <td><a href="{% url 'onboarding:member_detail' l.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">360° Record →</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="wdos-empty">No leaders match your filter.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

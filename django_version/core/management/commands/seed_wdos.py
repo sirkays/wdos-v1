@@ -1,14 +1,17 @@
-﻿import os
+import os
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 from core.models import (
     OrgUnit, Profile, RoleAssignment, Department, Staff,
-    OrgSetting, OrgLevel, RoleCode, NetworkCode, MemberStatus
+    OrgSetting, OrgLevel, RoleCode, NetworkCode, MemberStatus, ModuleAccess
 )
+from members.models import Referral, PositionMailbox
 from operations.models import (
     Task, Meeting, Announcement, ActivationDay, ActivationItem,
-    Priority, TaskStatus, MeetingMode, MeetingStatus
+    Priority, TaskStatus, MeetingMode, MeetingStatus, Programme,
+    ReportTemplate, MessageTemplate, Course, CourseModule, CourseQuestion,
+    EngagementItem, OutreachContact, AutomationRule
 )
 
 
@@ -300,6 +303,226 @@ class Command(BaseCommand):
         # 8. Org Settings
         OrgSetting.objects.get_or_create(key='app_version', defaults={'value': {'version': '85.8', 'flavor': 'django'}})
         OrgSetting.objects.get_or_create(key='motto', defaults={'value': {'text': 'No Woman Is Left Out'}})
+        OrgSetting.objects.get_or_create(key='mailbox_gate', defaults={'value': {'mode': 'activation_or_onboarding'}})
+        OrgSetting.objects.get_or_create(key='activation_window_days', defaults={'value': {'days': 14}})
+
+        # 9. Official Referral Forms (WGMN & WNNN)
+        Referral.objects.get_or_create(
+            referral_code='WGMN',
+            defaults={'referrer': founder, 'network': NetworkCode.WGMN, 'route': 'ref3', 'label': 'WGMN 3-Day Referral Activation Form', 'is_active': True}
+        )
+        Referral.objects.get_or_create(
+            referral_code='WNNN',
+            defaults={'referrer': founder, 'network': NetworkCode.WNNN, 'route': 'ref3', 'label': 'WNNN 3-Day Referral Activation Form', 'is_active': True}
+        )
+
+        # 10. Position Mailboxes
+        ngozi = Profile.objects.filter(email='ngozi@thewoddi.org').first()
+        PositionMailbox.objects.get_or_create(
+            position_code='NG-CR-WGMN',
+            defaults={
+                'email_address': 'nigeria.cr@thewoddi.org',
+                'display_name': 'Nigeria Country Representative (WGMN)',
+                'org_unit': unit_cache.get('Nigeria'),
+                'role': RoleCode.COUNTRY_REP,
+                'holder': ngozi,
+                'country_iso': 'NG',
+                'level': 0,
+                'network': 'WGMN',
+                'is_unlocked': True,
+            }
+        )
+        amina = Profile.objects.filter(email='amina@thewoddi.org').first()
+        PositionMailbox.objects.get_or_create(
+            position_code='KE-CR-WGMN',
+            defaults={
+                'email_address': 'kenya.cr@thewoddi.org',
+                'display_name': 'Kenya Country Representative (WGMN)',
+                'org_unit': unit_cache.get('Kenya'),
+                'role': RoleCode.COUNTRY_REP,
+                'holder': amina,
+                'country_iso': 'KE',
+                'level': 0,
+                'network': 'WGMN',
+                'is_unlocked': True,
+            }
+        )
+
+        # 11. Programmes
+        Programme.objects.get_or_create(
+            code='WIWS',
+            defaults={
+                'name': 'WODDI Inspirational Women Summit (WIWS)',
+                'description': 'Flagship pan-African leadership and community empowerment convening.',
+                'network': 'both',
+                'is_active': True,
+            }
+        )
+        Programme.objects.get_or_create(
+            code='WGMN-MATERNAL',
+            defaults={
+                'name': 'Good Mother Maternal & Family Resilience Initiative',
+                'description': 'Community-led maternal health, mentorship, and household economic strengthening.',
+                'network': 'WGMN',
+                'is_active': True,
+            }
+        )
+        Programme.objects.get_or_create(
+            code='WNNN-NEXTGEN',
+            defaults={
+                'name': 'NextGen Young Women Leadership & Skills Accelerator',
+                'description': 'Mentorship, digital literacy, and civic leadership for young women aged 18-29.',
+                'network': 'WNNN',
+                'is_active': True,
+            }
+        )
+
+        # 12. Report Templates
+        ReportTemplate.objects.get_or_create(
+            code='monthly_leadership',
+            defaults={
+                'title': 'Monthly Leadership & Accountability Report',
+                'category': 'monthly',
+                'description': 'Standard monthly unit leadership, mobilisation, programme, and governance report.',
+                'fields': [
+                    {'key': 'executive_summary', 'label': '1. Executive Summary & Highlights', 'type': 'textarea', 'required': True},
+                    {'key': 'mobilisation_notes', 'label': '2. Membership & Leadership Mobilisation', 'type': 'textarea', 'required': True},
+                    {'key': 'activities_summary', 'label': '3. Programmes & Community Activities Delivered', 'type': 'textarea', 'required': False},
+                    {'key': 'challenges', 'label': '4. Key Challenges, Risks & Escalations', 'type': 'textarea', 'required': False},
+                    {'key': 'next_month_priorities', 'label': '5. Top 3 Priorities for Next Month', 'type': 'textarea', 'required': True},
+                ]
+            }
+        )
+        ReportTemplate.objects.get_or_create(
+            code='weekly_pulse',
+            defaults={
+                'title': 'Weekly Field Operations Pulse',
+                'category': 'weekly',
+                'description': 'Concise weekly check-in on unit activity, urgent bottlenecks, and follow-ups.',
+                'fields': [
+                    {'key': 'wins_this_week', 'label': 'Key Wins & Completed Actions This Week', 'type': 'textarea', 'required': True},
+                    {'key': 'blockers', 'label': 'Urgent Blockers or Support Needed from HQ', 'type': 'textarea', 'required': False},
+                    {'key': 'focus_next_week', 'label': 'Primary Focus for Next Week', 'type': 'textarea', 'required': True},
+                ]
+            }
+        )
+        ReportTemplate.objects.get_or_create(
+            code='activity_report',
+            defaults={
+                'title': 'Field Activity & Event Delivery Report',
+                'category': 'activity',
+                'description': 'Post-activity report capturing attendance, outcomes, and evidence.',
+                'fields': [
+                    {'key': 'activity_title', 'label': 'Activity / Event Title', 'type': 'text', 'required': True},
+                    {'key': 'women_reached', 'label': 'Number of Women Reached', 'type': 'number', 'required': True},
+                    {'key': 'outcomes', 'label': 'Outcomes & Community Feedback', 'type': 'textarea', 'required': True},
+                ]
+            }
+        )
+        ReportTemplate.objects.get_or_create(
+            code='meeting_actions',
+            defaults={
+                'title': 'Meeting Minutes & Action Points Report',
+                'category': 'meeting',
+                'description': 'Structured record of unit meeting decisions, attendance, and assigned action points.',
+                'fields': [
+                    {'key': 'meeting_summary', 'label': 'Key Decisions & Resolutions', 'type': 'textarea', 'required': True},
+                    {'key': 'action_points', 'label': 'Assigned Action Points & Deadlines', 'type': 'textarea', 'required': True},
+                ]
+            }
+        )
+
+        # 13. Message Templates
+        MessageTemplate.objects.get_or_create(
+            code='welcome_leader', locale='en',
+            defaults={
+                'name': 'Welcome Appointed Volunteer Leader',
+                'category': 'membership',
+                'subject': 'Welcome to WODDI Leadership, {first_name}!',
+                'body': 'Dear {first_name}, congratulations on your appointment as {role} at {chapter} ({network}). Reference: {reference}.',
+                'status': 'approved',
+            }
+        )
+        MessageTemplate.objects.get_or_create(
+            code='activation_reminder', locale='en',
+            defaults={
+                'name': '3-Day Activation Progress Reminder',
+                'category': 'activation',
+                'subject': 'Complete your WODDI Activation, {first_name}',
+                'body': 'Hello {first_name}, please sign in to complete your remaining activation steps for {network}.',
+                'status': 'approved',
+            }
+        )
+
+        # 14. Courses & Modules
+        course1, _ = Course.objects.get_or_create(
+            code='VLSE-PD',
+            defaults={
+                'title': 'Volunteer Leadership & Strategic Execution (VLSE)',
+                'description': 'Core certification course for WODDI Country, State, LGA, and Chapter leaders.',
+                'network': 'both',
+                'is_active': True,
+            }
+        )
+        mod1, _ = CourseModule.objects.get_or_create(
+            course=course1, seq=1,
+            defaults={
+                'title': 'Module 1: The WODDI Charter, Vision & Dual-Network Architecture',
+                'body': 'WODDI operates two complementary intergenerational networks: WGMN (30+) and WNNN (18-29) under the motto No Woman Is Left Out.'
+            }
+        )
+        CourseQuestion.objects.get_or_create(
+            module=mod1, seq=1,
+            defaults={
+                'prompt': 'Which WODDI network serves young women aged 18 to 29?',
+                'options': ['WGMN', 'WNNN', 'WIWS', 'HOFCO'],
+                'correct_index': 1,
+            }
+        )
+
+        # 15. Engagement Calendar & Autopilot Rules
+        EngagementItem.objects.get_or_create(
+            kind='weekly_theme', seq=1,
+            defaults={
+                'title': 'Week 1: Stewardship & Accountable Leadership',
+                'focus': 'Every seat is a trust held on behalf of the women in your community.',
+                'scheduled_date': timezone.now().date(),
+                'network': 'both',
+                'status': 'scheduled',
+            }
+        )
+        autopilot_specs = [
+            ('inactive_checkin', 'Inactive Leader Check-in', 'Send a warm check-in to seated leaders inactive for N+ days.', True, 14),
+            ('onboarding_nudge', 'Onboarding Completion Nudge', 'Weekly reminder for seated leaders who have not completed the 10-step pack.', True, 7),
+            ('overdue_task_reminder', 'Overdue Task Reminder', 'Remind assignees with tasks past due date.', True, 3),
+            ('overdue_escalation', 'Overdue Task Escalation to HOFCO', 'Escalate tasks overdue beyond threshold to HOFCO.', True, 7),
+            ('weekly_digest', 'Monday Morning Executive Digest', 'Compile weekly network health digest for HQ and Country Reps.', True, 7),
+        ]
+        for code, name, desc, is_auto, days in autopilot_specs:
+            AutomationRule.objects.get_or_create(
+                code=code,
+                defaults={'name': name, 'description': desc, 'is_autopilot': is_auto, 'is_active': False, 'threshold_days': days}
+            )
+
+        # 16. Outreach Contacts
+        OutreachContact.objects.get_or_create(
+            email='info@panafwomen.org',
+            defaults={
+                'organisation_name': 'Pan-African Women Development Coalition',
+                'country': 'Nigeria',
+                'contact_person': 'Dr. Halima Yusuf',
+                'phone': '+2348030001111',
+                'category': 'Continental NGO',
+                'status': 'sent',
+            }
+        )
+
+        # 17. Default Module Access
+        all_mods = ['members', 'recruitment', 'organisation', 'tasks', 'meetings', 'reports', 'hq', 'announcements', 'settings', 'programmes', 'cases', 'helpdesk', 'library', 'documents', 'content']
+        for m in all_mods:
+            ModuleAccess.objects.get_or_create(role=RoleCode.SUPER_ADMIN, module=m)
+            ModuleAccess.objects.get_or_create(role=RoleCode.EXECUTIVE_DIRECTOR, module=m)
+            ModuleAccess.objects.get_or_create(role=RoleCode.HQ_TEAM, module=m)
 
         self.stdout.write(self.style.SUCCESS("WDOS database seeding completed successfully!"))
         self.stdout.write(self.style.NOTICE("Default credentials:"))

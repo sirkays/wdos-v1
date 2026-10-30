@@ -1,0 +1,46 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Monitoring, Evaluation &amp; Learning (M&amp;E)</span>
+  <h1>Continental Reports &amp; Impact Analytics</h1>
+  <p>Aggregate leadership reporting compliance, field activities, and beneficiaries reached across WGMN and WNNN.</p>
+  <div style="margin-top:12px;">
+    <a href="?export=csv" class="wdos-btn wdos-btn-gold wdos-btn-sm">Export Continental Reports CSV</a>
+  </div>
+</div>
+
+<div class="wdos-kpi-grid">
+  <div class="wdos-kpi"><div class="num">{{ total_reports }}</div><div class="lbl">Reports Submitted</div></div>
+  <div class="wdos-kpi"><div class="num" style="color:#065f46;">{{ approved_reports }}</div><div class="lbl">Approved Reports</div></div>
+  <div class="wdos-kpi"><div class="num">{{ total_activities }}</div><div class="lbl">Field Activities</div></div>
+  <div class="wdos-kpi"><div class="num" style="color:#065f46;">{{ total_beneficiaries }}</div><div class="lbl">Beneficiaries Reached</div></div>
+</div>
+
+<div class="wdos-card">
+  <div class="wdos-card-head">
+    <h2 class="wdos-card-title">Recent Leadership Reports</h2>
+    <a href="{% url 'onboarding:reporting' %}" class="wdos-btn wdos-btn-primary wdos-btn-sm">Reporting Centre →</a>
+  </div>
+  <div class="wdos-table-wrap">
+    <table class="wdos-table">
+      <thead><tr><th>Report Title</th><th>Period</th><th>Author</th><th>Network</th><th>Unit</th><th>Status</th><th>Inspect</th></tr></thead>
+      <tbody>
+        {% for r in recent_reports %}
+        <tr>
+          <td><strong>{{ r.title }}</strong></td>
+          <td>{{ r.period_label }}</td>
+          <td>{{ r.author.full_name }}</td>
+          <td>{{ r.network }}</td>
+          <td>{{ r.org_unit.name }}</td>
+          <td><span class="wdos-badge wdos-badge-slate">{{ r.get_status_display }}</span></td>
+          <td><a href="{% url 'onboarding:report_detail' r.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Open →</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="wdos-empty">No reports recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

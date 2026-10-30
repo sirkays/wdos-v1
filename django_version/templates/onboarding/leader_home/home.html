@@ -1,0 +1,671 @@
+{% extends "onboarding/base_workspace.html" %}
+{% load static %}
+
+{% block content %}
+{% if view_as_target %}
+<div class="wdos-alert wdos-alert-warning" style="display:flex; align-items:center; justify-content:space-between;">
+  <div>
+    <strong>HQ Impersonation Preview (Read-Only):</strong> You are viewing the workspace of <strong>{{ subject.full_name }}</strong> ({{ subject.email }} · {{ subject.network }}).
+  </div>
+  <a href="{% url 'onboarding:accounts_manage' %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Exit Preview</a>
+</div>
+{% endif %}
+
+<!-- Hero Banner -->
+<div class="wdos-hero">
+  <span class="wdos-kicker">
+    {% if subject.network == 'WNNN' %}WODDI Nurture &amp; Next-Gen Network (WNNN · 18–29){% else %}WODDI Global Mothers &amp; Women Network (WGMN · 30+){% endif %}
+    · {{ subject.country|default:"Continental" }}
+  </span>
+  <h1>Welcome, {{ subject.full_name }}</h1>
+  <p>
+    {% if primary_seat %}
+      <strong>{{ primary_seat.network_title }}</strong> · {{ primary_seat.org_unit.name }}
+      {% if primary_seat.appointment_status == 'acting' %}<span class="wdos-badge wdos-badge-amber">Acting Capacity</span>{% endif %}
+    {% else %}
+      {{ subject.role_applied|default:"WODDI Network Member & Volunteer" }} · {{ subject.org_unit.name|default:subject.country }}
+    {% endif %}
+    {% if subject.membership_no %} · ID: <code>{{ subject.membership_no }}</code>{% endif %}
+  </p>
+
+  <!-- Subtab Navigation Strip -->
+  <div style="margin-top: 14px; display: flex; gap: 6px; flex-wrap: wrap;">
+    <a href="{% url 'onboarding:leader_home' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'home' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Home</a>
+    <a href="{% url 'onboarding:my_tab' 'messages' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'messages' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Messages</a>
+    <a href="{% url 'onboarding:my_tab' 'profile' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'profile' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">My Profile</a>
+    <a href="{% url 'onboarding:my_tab' 'leadership' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'leadership' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">My Seat</a>
+    <a href="{% url 'onboarding:my_tab' 'onboarding' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'onboarding' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Onboarding ({{ onboarding_count }}/{{ onboarding_total }})</a>
+    <a href="{% url 'onboarding:my_tab' 'learning' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'learning' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Learning</a>
+    <a href="{% url 'onboarding:my_tab' 'referrals' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'referrals' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Referrals</a>
+    <a href="{% url 'onboarding:my_tab' 'impact' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'impact' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">My Impact</a>
+    <a href="{% url 'onboarding:my_tab' 'documents' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'documents' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Documents</a>
+    <a href="{% url 'onboarding:my_tab' 'templates' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'templates' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Templates</a>
+    <a href="{% url 'onboarding:my_tab' 'calendar' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'calendar' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Calendar</a>
+    <a href="{% url 'onboarding:my_tab' 'support' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'support' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Help &amp; Support</a>
+    <a href="{% url 'onboarding:my_tab' 'safeguarding' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'safeguarding' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Safeguarding</a>
+    <a href="{% url 'onboarding:my_tab' 'settings' %}" class="wdos-btn wdos-btn-sm {% if subtab == 'settings' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Settings</a>
+  </div>
+</div>
+
+{% if subtab == 'home' %}
+  <!-- 1. Appointment Acceptance / Decline Banner -->
+  {% if primary_seat and not primary_seat.accepted_at and not primary_seat.declined_at %}
+  <div class="wdos-card" style="border: 2px solid #d97706; background: #fffbeb;">
+    <div class="wdos-card-head">
+      <div>
+        <span class="wdos-kicker" style="color:#b45309;">Action Required · Official Leadership Appointment</span>
+        <h2 class="wdos-card-title">Accept Your Appointment as {{ primary_seat.network_title }} ({{ primary_seat.org_unit.name }})</h2>
+      </div>
+      <span class="wdos-badge wdos-badge-amber">Awaiting Acceptance</span>
+    </div>
+    <p style="font-size:13.5px; color:#475569; margin-bottom:14px;">
+      You have been appointed by WODDI Headquarters to serve as <strong>{{ primary_seat.network_title }}</strong> for <strong>{{ primary_seat.org_unit.name }}</strong>.
+      Please formally accept your seat to unlock your full governance mandate, or let HQ know if you are unable to serve at this time.
+    </p>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="accept_appointment">
+        <button type="submit" class="wdos-btn wdos-btn-primary">I Formally Accept This Appointment</button>
+      </form>
+      <form method="post" style="display:flex; gap:6px; align-items:center;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="decline_appointment">
+        <input type="text" name="decline_reason" class="wdos-input" placeholder="Reason if declining..." style="width:200px; padding:6px 10px;">
+        <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">Decline Seat</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 2. Founder's Personal Welcome Card -->
+  {% if primary_seat and not primary_seat.founder_welcome_seen_at %}
+  <div class="wdos-card" style="border-left: 5px solid #047857; background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);">
+    <div class="wdos-card-head">
+      <div>
+        <span class="wdos-kicker">Message from the Founder &amp; President</span>
+        <h2 class="wdos-card-title">Welcome to the WODDI Continental Leadership Family</h2>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark_founder_welcome_seen">
+        <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">Acknowledge Welcome</button>
+      </form>
+    </div>
+    <p style="font-size:13.5px; color:#334155; line-height:1.65;">
+      "Dear {{ subject.first_name }}, thank you for stepping forward to lead with integrity, compassion, and excellence.
+      Whether you serve in WGMN or WNNN, your leadership seat is a sacred trust to uplift women, mothers, and young women across your jurisdiction."
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- 3. 10-Step Leadership Onboarding Progress Card -->
+  {% if not onboarding_done %}
+  <div class="wdos-card" style="border: 1.5px solid #047857;">
+    <div class="wdos-card-head">
+      <div>
+        <span class="wdos-kicker">Mandatory 10-Step Leadership Onboarding</span>
+        <h2 class="wdos-card-title">Complete Your Leadership Onboarding ({{ onboarding_count }} of {{ onboarding_total }} Steps — {{ onboarding_pct }}%)</h2>
+      </div>
+      <a href="{% url 'onboarding:start' %}" class="wdos-btn wdos-btn-primary">Continue 10-Step Onboarding →</a>
+    </div>
+    <div style="background:#e2e8f0; height:10px; border-radius:999px; overflow:hidden; margin-bottom:10px;">
+      <div style="background:#047857; width:{{ onboarding_pct }}%; height:100%;"></div>
+    </div>
+    <div style="font-size:12.5px; color:#64748b;">
+      Completing all 10 steps unlocks your official Leadership Certificate, Onboarding Pack, and full operational tools.
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 4. Weekly & Monthly HQ Inspiration + Official @woddi.org Position Mailbox -->
+  <div class="wdos-grid-2">
+    <div class="wdos-card">
+      <span class="wdos-kicker">Weekly &amp; Monthly HQ Inspiration</span>
+      <h2 class="wdos-card-title" style="margin-top:4px;">{{ weekly_msg.title|default:"Leading with Dignity & Purpose" }}</h2>
+      <p style="font-size:13px; color:#475569; line-height:1.55; margin:8px 0 12px;">
+        {{ weekly_msg.summary|default:"Stay anchored to our continental mission and support every chapter leader in your jurisdiction." }}
+      </p>
+      <div style="padding-top:10px; border-top:1px solid #e2e8f0; font-size:12px; color:#065f46; font-weight:600;">
+        Monthly Theme ({{ monthly_msg.month|default:"Current Month" }}): {{ monthly_msg.theme|default:"Grassroots Mobilisation & Accountability" }}
+      </div>
+    </div>
+
+    <div class="wdos-card">
+      <div class="wdos-card-head">
+        <div>
+          <span class="wdos-kicker">Official Position Mailbox</span>
+          <h2 class="wdos-card-title">@woddi.org Institutional Email</h2>
+        </div>
+        {% if mailbox %}
+          <span class="wdos-badge {% if mailbox_gate_open %}wdos-badge-green{% else %}wdos-badge-amber{% endif %}">
+            {% if mailbox_gate_open %}Unlocked{% else %}Gated{% endif %}
+          </span>
+        {% endif %}
+      </div>
+      {% if mailbox %}
+        <div style="font-size:13.5px; margin-bottom:10px;">
+          <div><strong>Address:</strong> <code>{{ mailbox.email_address }}</code></div>
+          <div><strong>Seat Code:</strong> <code>{{ mailbox.position_code }}</code> · {{ mailbox.display_name }}</div>
+        </div>
+        {% if revealed_password %}
+          <div class="wdos-alert wdos-alert-success" style="margin-bottom:10px;">
+            <strong>Temporary Mailbox Password:</strong> <code>{{ revealed_password }}</code>
+            <a href="{{ mailbox.webmail_url }}" target="_blank" rel="noopener" class="wdos-btn wdos-btn-outline wdos-btn-sm" style="margin-left:10px;">Open Webmail ↗</a>
+          </div>
+        {% elif mailbox_gate_open %}
+          <form method="post" action="{% url 'onboarding:reveal_mailbox' %}" style="display:flex; gap:8px; align-items:center;">
+            {% csrf_token %}
+            <input type="hidden" name="mailbox_id" value="{{ mailbox.id }}">
+            <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Reveal Mailbox Password (Audited)</button>
+            <a href="{{ mailbox.webmail_url }}" target="_blank" rel="noopener" class="wdos-btn wdos-btn-outline wdos-btn-sm">Webmail ↗</a>
+          </form>
+        {% else %}
+          <div style="font-size:12.5px; color:#b45309;">
+            Complete your activation or 10-step onboarding to unlock your official @woddi.org mailbox credentials.
+          </div>
+        {% endif %}
+      {% else %}
+        <p style="font-size:13px; color:#64748b;">No dedicated @woddi.org position mailbox is currently bound to your seat.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 5. Reference Screen 2 (Country/State Jurisdiction Command) OR Reference Screen 3 (Chapter/Grassroots) -->
+  {% if is_seated_leader %}
+  <div class="wdos-card">
+    <div class="wdos-card-head">
+      <div>
+        <span class="wdos-kicker">Jurisdiction Command · {{ subject.org_unit.name|default:subject.country }}</span>
+        <h2 class="wdos-card-title">Subordinate Units, Leaders &amp; Recruitment Pipeline</h2>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <a href="{% url 'onboarding:organisation' %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Organisation Tree</a>
+        <a href="{% url 'onboarding:reporting' %}" class="wdos-btn wdos-btn-primary wdos-btn-sm">Submit / Review Reports</a>
+      </div>
+    </div>
+    <div class="wdos-kpi-grid" style="margin-bottom:12px;">
+      <div class="wdos-kpi"><div class="num">{{ child_units|length }}</div><div class="lbl">Child Units</div></div>
+      <div class="wdos-kpi"><div class="num">{{ jurisdiction_leaders|length }}</div><div class="lbl">Team Leaders</div></div>
+      <div class="wdos-kpi"><div class="num">{{ pending_apps|length }}</div><div class="lbl">Pending Applicants</div></div>
+      <div class="wdos-kpi"><div class="num">{{ my_tasks|length }}</div><div class="lbl">My Open Tasks</div></div>
+    </div>
+    {% if is_deputy %}
+    <div class="wdos-alert wdos-alert-info" style="margin-bottom:0;">
+      <strong>Delegated Deputy / Assistant Portfolio:</strong> You have full delegated operational access to draft reports, coordinate subordinate units, and prepare submissions for your Principal Leader.
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- 6. Tasks & Announcements Grid -->
+  <div class="wdos-grid-2">
+    <div class="wdos-card">
+      <div class="wdos-card-head">
+        <h2 class="wdos-card-title">My Assigned Tasks ({{ my_tasks|length }})</h2>
+        <a href="{% url 'onboarding:tasks' %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">All Tasks →</a>
+      </div>
+      <div class="wdos-table-wrap">
+        <table class="wdos-table">
+          <thead><tr><th>Task</th><th>Priority</th><th>Due</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for t in my_tasks %}
+            <tr>
+              <td><a href="{% url 'onboarding:task_detail' t.id %}"><strong>{{ t.title }}</strong></a></td>
+              <td><span class="wdos-badge wdos-badge-amber">{{ t.get_priority_display }}</span></td>
+              <td>{{ t.due_on|default:"—" }}</td>
+              <td><span class="wdos-badge wdos-badge-slate">{{ t.get_status_display }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="wdos-empty">No open tasks assigned to you.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="wdos-card">
+      <div class="wdos-card-head">
+        <h2 class="wdos-card-title">Latest HQ &amp; Network Announcements</h2>
+        <a href="{% url 'onboarding:announcements' %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">All Bulletins →</a>
+      </div>
+      {% for a in announcements %}
+      <div style="padding:10px 0; border-bottom:1px solid #f1f5f9;">
+        <div style="font-weight:700; font-size:13.5px; color:#0f172a;">{{ a.title }}</div>
+        <div style="font-size:12.5px; color:#475569; margin-top:2px;">{{ a.body|truncatewords:25 }}</div>
+        <div style="font-size:11px; color:#94a3b8; margin-top:4px;">{{ a.created_at|date:"M d, Y" }}</div>
+      </div>
+      {% empty %}
+      <div class="wdos-empty">No announcements posted yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif subtab == 'messages' %}
+  <div class="wdos-grid-2">
+    <div class="wdos-card">
+      <h2 class="wdos-card-title" style="margin-bottom:12px;">Send Direct Message to HQ / Supervisor</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="send_message">
+        <div class="wdos-field">
+          <label class="wdos-label">Recipient (HQ Secretariat / Supervisor)</label>
+          <select name="recipient_id" class="wdos-select">
+            {% for hq in hq_contacts %}
+            <option value="{{ hq.id }}">{{ hq.full_name }} ({{ hq.hq_function|upper }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Subject</label>
+          <input type="text" name="subject" class="wdos-input" required>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Message</label>
+          <textarea name="body" class="wdos-textarea" required></textarea>
+        </div>
+        <button type="submit" class="wdos-btn wdos-btn-primary">Send Message</button>
+      </form>
+    </div>
+    <div class="wdos-card">
+      <h2 class="wdos-card-title" style="margin-bottom:12px;">My Message Thread ({{ my_messages|length }})</h2>
+      {% for m in my_messages %}
+      <div style="padding:10px 0; border-bottom:1px solid #e2e8f0;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#64748b;">
+          <span>From: <strong>{{ m.sender.full_name }}</strong> → To: <strong>{{ m.recipient.full_name }}</strong></span>
+          <span>{{ m.created_at|date:"M d, H:i" }}</span>
+        </div>
+        <div style="font-weight:700; margin-top:3px;">{{ m.subject }}</div>
+        <div style="font-size:13px; color:#334155; margin-top:3px;">{{ m.body }}</div>
+      </div>
+      {% empty %}
+      <div class="wdos-empty">No messages in your inbox yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif subtab == 'profile' %}
+  <div class="wdos-card">
+    <div class="wdos-card-head">
+      <div>
+        <h2 class="wdos-card-title">My Profile &amp; Contact Information</h2>
+        {% if is_seated_leader %}
+        <div class="wdos-card-sub" style="color:#b45309;">
+          HQ Governance Lock (profileHqManaged): Your official name, network, country, and leadership seat are managed by WODDI HQ. You may update your contact numbers, city, profession, skills, and bio below.
+        </div>
+        {% endif %}
+      </div>
+      <span class="wdos-badge {% if subject.network == 'WGMN' %}wdos-badge-wgmn{% else %}wdos-badge-wnnn{% endif %}">{{ subject.network }}</span>
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_profile">
+      <div class="wdos-grid-3">
+        <div class="wdos-field">
+          <label class="wdos-label">First Name {% if is_seated_leader %}(HQ Locked){% endif %}</label>
+          <input type="text" name="first_name" value="{{ subject.first_name }}" class="wdos-input" {% if is_seated_leader %}readonly style="background:#f1f5f9;"{% endif %}>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Last Name {% if is_seated_leader %}(HQ Locked){% endif %}</label>
+          <input type="text" name="last_name" value="{{ subject.last_name }}" class="wdos-input" {% if is_seated_leader %}readonly style="background:#f1f5f9;"{% endif %}>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Country {% if is_seated_leader %}(HQ Locked){% endif %}</label>
+          <input type="text" name="country" value="{{ subject.country }}" class="wdos-input" {% if is_seated_leader %}readonly style="background:#f1f5f9;"{% endif %}>
+        </div>
+      </div>
+      <div class="wdos-grid-3">
+        <div class="wdos-field">
+          <label class="wdos-label">Phone Number</label>
+          <input type="text" name="phone" value="{{ subject.phone }}" class="wdos-input">
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">WhatsApp Number</label>
+          <input type="text" name="whatsapp" value="{{ subject.whatsapp }}" class="wdos-input">
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">City / Town</label>
+          <input type="text" name="city" value="{{ subject.city }}" class="wdos-input">
+        </div>
+      </div>
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Profession / Occupation</label>
+          <input type="text" name="profession" value="{{ subject.profession }}" class="wdos-input">
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Skills (comma-separated)</label>
+          <input type="text" name="skills" value="{{ subject.skills|join:', ' }}" class="wdos-input">
+        </div>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Leadership Bio &amp; Statement</label>
+        <textarea name="bio" class="wdos-textarea">{{ subject.bio }}</textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Save Profile Updates</button>
+    </form>
+  </div>
+
+{% elif subtab == 'leadership' or subtab == 'network' or subtab == 'country' %}
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">My Leadership Seat, Network &amp; Jurisdiction</h2>
+    {% for r in active_roles %}
+    <div style="padding:14px; border:1px solid #e2e8f0; border-radius:10px; margin-bottom:10px; background:#f8fafc;">
+      <div style="font-size:16px; font-weight:800; color:#064e3b;">{{ r.network_title }}</div>
+      <div style="font-size:13px; color:#475569; margin-top:4px;">
+        Organisational Unit: <strong>{{ r.org_unit.name }}</strong> ({{ r.org_unit.get_level_display }}) · Network: <strong>{{ subject.network }}</strong>
+      </div>
+      <div style="font-size:12px; color:#64748b; margin-top:4px;">
+        Appointment Status: <strong>{{ r.appointment_status|upper }}</strong>
+        {% if r.accepted_at %} · Accepted {{ r.accepted_at|date:"M d, Y" }}{% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <p style="font-size:13.5px; color:#64748b;">You are registered as a member/volunteer in {{ subject.network }} ({{ subject.country }}).</p>
+    {% endfor %}
+  </div>
+
+{% elif subtab == 'onboarding' %}
+  <div class="wdos-card">
+    <div class="wdos-card-head">
+      <div>
+        <h2 class="wdos-card-title">10-Step Leadership Onboarding Checklist ({{ onboarding_count }}/{{ onboarding_total }})</h2>
+        <div class="wdos-card-sub">Every appointed WODDI leader completes these 10 governance steps.</div>
+      </div>
+      <a href="{% url 'onboarding:start' %}" class="wdos-btn wdos-btn-primary">Open Interactive Onboarding Wizard →</a>
+    </div>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Step #</th><th>Step Title</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          {% for s in steps_list %}
+          <tr>
+            <td><strong>Step {{ s.num }}</strong></td>
+            <td>{{ s.label }}</td>
+            <td>
+              {% if s.completed %}
+                <span class="wdos-badge wdos-badge-green">Completed</span>
+              {% else %}
+                <span class="wdos-badge wdos-badge-amber">Pending</span>
+              {% endif %}
+            </td>
+            <td><a href="{% url 'onboarding:start' %}?step={{ s.num }}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Open Step {{ s.num }}</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% elif subtab == 'learning' %}
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:12px;">WODDI Leadership Academy &amp; Capacity Building</h2>
+    <div class="wdos-grid-2">
+      {% for item in course_cards %}
+      <div style="border:1px solid #e2e8f0; border-radius:12px; padding:16px; background:#fff;">
+        <span class="wdos-badge wdos-badge-green">{{ item.course.category }}</span>
+        <h3 style="margin:8px 0 4px; font-size:16px;">{{ item.course.title }}</h3>
+        <p style="font-size:13px; color:#64748b; margin-bottom:12px;">{{ item.course.summary }}</p>
+        {% if item.enrollment and item.enrollment.status == 'completed' %}
+          <div class="wdos-alert wdos-alert-success" style="margin-bottom:0;">
+            Completed with <strong>{{ item.enrollment.quiz_score }}%</strong> on {{ item.enrollment.completed_at|date:"M d, Y" }}
+          </div>
+        {% else %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="complete_course">
+            <input type="hidden" name="course_id" value="{{ item.course.id }}">
+            <input type="hidden" name="quiz_score" value="90">
+            <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Complete Modules &amp; Submit Quiz</button>
+          </form>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="wdos-empty">No courses published yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif subtab == 'referrals' or subtab == 'reflinks' %}
+  <div class="wdos-grid-2">
+    <div class="wdos-card">
+      <h2 class="wdos-card-title" style="margin-bottom:10px;">Official 3-Day Referral Activation Links</h2>
+      <p style="font-size:13px; color:#475569; margin-bottom:12px;">Share these direct 3-Day Referral links with prospective leaders you nominate:</p>
+      <div style="padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:8px;">
+        <strong>WGMN (Women 30+) 3-Day Referral Link:</strong> <code>/join/WGMN/</code>
+      </div>
+      <div style="padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:14px;">
+        <strong>WNNN (Young Women 18–29) 3-Day Referral Link:</strong> <code>/join/WNNN/</code>
+      </div>
+      <h3 style="font-size:14px; margin-bottom:8px;">Nominate &amp; Log a Candidate Referral</h3>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_referral">
+        <div class="wdos-grid-2">
+          <div class="wdos-field">
+            <label class="wdos-label">Candidate Full Name</label>
+            <input type="text" name="candidate_name" class="wdos-input" required>
+          </div>
+          <div class="wdos-field">
+            <label class="wdos-label">Candidate Email</label>
+            <input type="email" name="candidate_email" class="wdos-input" required>
+          </div>
+        </div>
+        <div class="wdos-grid-2">
+          <div class="wdos-field">
+            <label class="wdos-label">Phone / WhatsApp</label>
+            <input type="text" name="candidate_phone" class="wdos-input">
+          </div>
+          <div class="wdos-field">
+            <label class="wdos-label">Target Network</label>
+            <select name="network" class="wdos-select">
+              <option value="WGMN">WGMN (30+)</option>
+              <option value="WNNN">WNNN (18–29)</option>
+            </select>
+          </div>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Endorsement Note</label>
+          <input type="text" name="notes" class="wdos-input" placeholder="Why you recommend this candidate...">
+        </div>
+        <button type="submit" class="wdos-btn wdos-btn-primary">Record Referral</button>
+      </form>
+    </div>
+
+    <div class="wdos-card">
+      <h2 class="wdos-card-title" style="margin-bottom:10px;">My Referred Candidates ({{ my_referrals|length }})</h2>
+      <div class="wdos-table-wrap">
+        <table class="wdos-table">
+          <thead><tr><th>Code</th><th>Candidate</th><th>Network</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for r in my_referrals %}
+            <tr>
+              <td><code>{{ r.referral_code }}</code></td>
+              <td><strong>{{ r.candidate_name }}</strong><div style="font-size:11px; color:#64748b;">{{ r.candidate_email }}</div></td>
+              <td>{{ r.network }}</td>
+              <td><span class="wdos-badge wdos-badge-green">{{ r.status }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="wdos-empty">You have not logged any referrals yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+{% elif subtab == 'impact' %}
+  <div class="wdos-card">
+    <div class="wdos-card-head">
+      <h2 class="wdos-card-title">My Field Impact &amp; Logged Activities ({{ my_activities|length }})</h2>
+      <a href="{% url 'onboarding:activities' %}" class="wdos-btn wdos-btn-primary wdos-btn-sm">Log Field Activity →</a>
+    </div>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Beneficiaries Reached</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for act in my_activities %}
+          <tr>
+            <td>{{ act.activity_date }}</td>
+            <td><strong>{{ act.title }}</strong></td>
+            <td>{{ act.category }}</td>
+            <td>{{ act.beneficiaries_reached }}</td>
+            <td><span class="wdos-badge wdos-badge-green">{{ act.status }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="wdos-empty">No field activities logged yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% elif subtab == 'documents' %}
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:12px;">Official Governance &amp; Policy Documents</h2>
+    <div class="wdos-grid-2">
+      {% for slug, doc in required_docs.items %}
+      <div style="padding:14px; border:1px solid #e2e8f0; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <strong>{{ doc.title }}</strong>
+          <div style="font-size:12px; color:#64748b;">{{ doc.subtitle }}</div>
+        </div>
+        <a href="{% url 'onboarding:doc' slug %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Read Document →</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif subtab == 'templates' %}
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:12px;">Official Printable Templates &amp; Forms</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Code</th><th>Template Title</th><th>Category</th><th>Open</th></tr></thead>
+        <tbody>
+          {% for tpl in official_templates %}
+          <tr>
+            <td><code>{{ tpl.code }}</code></td>
+            <td><strong>{{ tpl.title }}</strong></td>
+            <td><span class="wdos-badge wdos-badge-slate">{{ tpl.category }}</span></td>
+            <td><a href="{% static tpl.file %}" target="_blank" class="wdos-btn wdos-btn-outline wdos-btn-sm">Open Printable Form ↗</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% elif subtab == 'calendar' %}
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:12px;">Continental Engagement Calendar &amp; Events</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Scheduled Date</th><th>Event / Campaign</th><th>Type</th><th>Network</th><th>RSVP</th></tr></thead>
+        <tbody>
+          {% for ev in engagement_items %}
+          <tr>
+            <td>{{ ev.scheduled_for|date:"M d, Y H:i"|default:"TBA" }}</td>
+            <td><strong>{{ ev.title }}</strong><div style="font-size:12px; color:#64748b;">{{ ev.description }}</div></td>
+            <td><span class="wdos-badge wdos-badge-blue">{{ ev.item_type }}</span></td>
+            <td>{{ ev.network }}</td>
+            <td>
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="engagement_participate">
+                <input type="hidden" name="item_id" value="{{ ev.id }}">
+                <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Confirm Attendance</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="wdos-empty">No upcoming engagement items scheduled.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% elif subtab == 'support' %}
+  <div class="wdos-grid-2">
+    <div class="wdos-card">
+      <h2 class="wdos-card-title" style="margin-bottom:10px;">Request Help from HQ Support Desk</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="submit_support_ticket">
+        <div class="wdos-field">
+          <label class="wdos-label">Category</label>
+          <select name="category" class="wdos-select">
+            <option value="technical">Portal / Technical Support</option>
+            <option value="governance">Governance &amp; Role Clarification</option>
+            <option value="reporting">Reporting &amp; Templates</option>
+            <option value="general">General Inquiry</option>
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Subject</label>
+          <input type="text" name="subject" class="wdos-input" required>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Details</label>
+          <textarea name="description" class="wdos-textarea" required></textarea>
+        </div>
+        <button type="submit" class="wdos-btn wdos-btn-primary">Submit Ticket</button>
+      </form>
+    </div>
+    <div class="wdos-card">
+      <h2 class="wdos-card-title" style="margin-bottom:10px;">My Support Tickets ({{ my_tickets|length }})</h2>
+      {% for tk in my_tickets %}
+      <div style="padding:10px 0; border-bottom:1px solid #e2e8f0;">
+        <div style="display:flex; justify-content:space-between;">
+          <strong>{{ tk.subject }}</strong>
+          <span class="wdos-badge wdos-badge-slate">{{ tk.status }}</span>
+        </div>
+        <div style="font-size:12.5px; color:#475569; margin-top:4px;">{{ tk.description }}</div>
+      </div>
+      {% empty %}
+      <div class="wdos-empty">No support tickets filed.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif subtab == 'safeguarding' %}
+  <div class="wdos-card" style="border-left: 4px solid #b91c1c;">
+    <h2 class="wdos-card-title" style="margin-bottom:8px;">Confidential Safeguarding, Ethics &amp; Whistleblowing</h2>
+    <p style="font-size:13.5px; color:#475569; margin-bottom:14px;">
+      WODDI enforces zero tolerance for abuse, exploitation, harassment, financial impropriety, or retaliation. Reports submitted here go directly to the HQ Safeguarding &amp; Ethics Directorate in strict confidence.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="submit_safeguarding">
+      <div class="wdos-field">
+        <label class="wdos-label">Incident / Concern Title</label>
+        <input type="text" name="title" class="wdos-input" required>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Confidential Details</label>
+        <textarea name="description" class="wdos-textarea" required></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-danger">Submit Confidential Safeguarding Report</button>
+    </form>
+  </div>
+
+{% elif subtab == 'settings' %}
+  <div class="wdos-card" style="max-width:540px;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Account Security &amp; Password</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="change_password">
+      <div class="wdos-field">
+        <label class="wdos-label">New Password (minimum 6 characters)</label>
+        <input type="password" name="new_password" class="wdos-input" required>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Confirm New Password</label>
+        <input type="password" name="confirm_password" class="wdos-input" required>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Update Password</button>
+    </form>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">WDOS Governance Utilities &amp; System Administration</span>
+  <h1>WDOS System Tools, Ask WODDI &amp; UAT Feedback</h1>
+  <p>Access the Ask WODDI Governance Assistant, System Health Doctor, UAT Feedback Register, and System Settings.</p>
+  <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+    <a href="{% url 'onboarding:ask_woddi' %}" class="wdos-btn wdos-btn-sm {% if tool == 'ask' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Ask WODDI Assistant</a>
+    <a href="{% url 'onboarding:doctor' %}" class="wdos-btn wdos-btn-sm {% if tool == 'doctor' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">System Doctor</a>
+    <a href="{% url 'onboarding:uat_feedback' %}" class="wdos-btn wdos-btn-sm {% if tool == 'uat' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">UAT Feedback</a>
+    <a href="{% url 'onboarding:settings' %}" class="wdos-btn wdos-btn-sm {% if tool == 'settings' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">System Settings</a>
+  </div>
+</div>
+
+{% if tool == 'ask' %}
+<div class="wdos-card">
+  <h2 class="wdos-card-title" style="margin-bottom:8px;">Ask WODDI Governance &amp; Operations Assistant</h2>
+  <p class="wdos-card-sub" style="margin-bottom:14px;">Ask any question about WGMN vs WNNN age-band assignment, the 10-Step Leadership Onboarding, 3-Day/7-Day Activation, or Terms of Reference.</p>
+  <form method="get" style="display:flex; gap:8px; margin-bottom:16px;">
+    <input type="text" name="q" value="{{ ask_query }}" class="wdos-input" placeholder="e.g. How does the 18-29 WNNN and 30+ WGMN age rule work?" required>
+    <button type="submit" class="wdos-btn wdos-btn-primary">Ask WODDI</button>
+  </form>
+  {% if ask_answer %}
+  <div class="wdos-alert wdos-alert-success">
+    <strong>WDOS Knowledge Base Answer:</strong><br>{{ ask_answer }}
+  </div>
+  {% endif %}
+</div>
+
+{% elif tool == 'doctor' %}
+<div class="wdos-card">
+  <h2 class="wdos-card-title" style="margin-bottom:12px;">WDOS System Doctor &amp; Integrity Diagnostics</h2>
+  <div class="wdos-kpi-grid">
+    <div class="wdos-kpi"><div class="num">{{ diagnostics.profiles }}</div><div class="lbl">Profiles</div></div>
+    <div class="wdos-kpi"><div class="num">{{ diagnostics.org_units }}</div><div class="lbl">Org Units</div></div>
+    <div class="wdos-kpi"><div class="num">{{ diagnostics.active_seats }}</div><div class="lbl">Seated Leaders</div></div>
+    <div class="wdos-kpi"><div class="num">{{ diagnostics.mailboxes }}</div><div class="lbl">Position Mailboxes</div></div>
+    <div class="wdos-kpi"><div class="num">{{ diagnostics.autopilot_rules }}</div><div class="lbl">Autopilot Rules</div></div>
+    <div class="wdos-kpi"><div class="num">{{ diagnostics.courses }}</div><div class="lbl">Academy Courses</div></div>
+    <div class="wdos-kpi"><div class="num">{{ diagnostics.templates }}</div><div class="lbl">Message Templates</div></div>
+  </div>
+  <div class="wdos-alert wdos-alert-success" style="margin-bottom:0;">
+    <strong>All System Checks Passed (OK):</strong> Database schema, 6-level hierarchy, WGMN/WNNN network routing, and 5 autopilot rules are healthy.
+  </div>
+</div>
+
+{% elif tool == 'uat' %}
+<div class="wdos-grid-2">
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Submit UAT Feedback</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="submit_uat">
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Page / Module Tested</label>
+          <input type="text" name="page_route" value="/workspace/" class="wdos-input">
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Rating (1–5)</label>
+          <select name="rating" class="wdos-select">
+            <option value="5">5 — Excellent</option>
+            <option value="4">4 — Good</option>
+            <option value="3">3 — Acceptable</option>
+            <option value="2">2 — Needs Work</option>
+          </select>
+        </div>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Feedback / Observation</label>
+        <textarea name="comment" class="wdos-textarea" required></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Submit UAT Feedback</button>
+    </form>
+  </div>
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">UAT Feedback Log ({{ uat_list|length }})</h2>
+    {% for u in uat_list %}
+    <div style="padding:10px 0; border-bottom:1px solid #f1f5f9;">
+      <strong>{{ u.tester.full_name|default:"Tester" }}</strong> · Rating: {{ u.rating }}/5 · <code>{{ u.page_route }}</code>
+      <div style="font-size:13px; color:#334155; margin-top:4px;">{{ u.comment }}</div>
+    </div>
+    {% empty %}
+    <div class="wdos-empty">No UAT feedback submitted yet.</div>
+    {% endfor %}
+  </div>
+</div>
+
+{% else %}
+<div class="wdos-card">
+  <h2 class="wdos-card-title" style="margin-bottom:10px;">WDOS System &amp; Workspace Preferences</h2>
+  <p style="font-size:13.5px; color:#475569;">
+    Signed in as <strong>{{ request.user.full_name }}</strong> ({{ request.user.email }}) · Network: <strong>{{ request.user.network }}</strong>.
+    To change your password or update your personal details, visit <a href="{% url 'onboarding:my_tab' 'settings' %}">My Account Settings</a> or <a href="{% url 'onboarding:my_tab' 'profile' %}">My Profile</a>.
+  </p>
+</div>
+{% endif %}
+{% endblock %}

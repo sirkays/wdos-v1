@@ -1,0 +1,452 @@
+{% load static %}<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ page_title|default:"WODDI" }} — WDOS</title>
+  <link rel="stylesheet" href="{% static 'accounts/design.css' %}">
+  <link rel="stylesheet" href="{% static 'accounts/refinements.css' %}">
+  {% include '_tailwind.html' %}
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased flex flex-col justify-between">
+  <header class="border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+    <a href="{% url 'accounts:welcome' %}" class="flex items-center gap-3 no-underline">
+      <img src="{% static 'accounts/assets/woddi-logo.png' %}" alt="WODDI" class="h-10 w-auto">
+      <div>
+        <div class="text-sm font-extrabold text-slate-900">WODDI Digital Operating System</div>
+        <div class="text-xs text-woddi-600 font-semibold">No Woman Is Left Out</div>
+      </div>
+    </a>
+    <div class="flex items-center gap-3 text-xs font-bold">
+      <a href="{% url 'accounts:login' %}" class="px-3 py-2 rounded-lg border border-slate-200 text-slate-700 hover:border-woddi-600 no-underline">Leader Sign In</a>
+      <a href="{% url 'accounts:candidate_door' %}" class="px-3 py-2 rounded-lg bg-woddi-50 text-woddi-700 hover:bg-woddi-100 no-underline">Candidate Door</a>
+    </div>
+  </header>
+
+  <main class="max-w-2xl w-full mx-auto my-8 px-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
+      {% if error %}
+      <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800" role="alert">
+        {{ error }}
+      </div>
+      {% endif %}
+
+      {% if door_mode == 'apply' %}
+        <div class="text-xs font-extrabold uppercase tracking-wider text-woddi-600">Public Leadership & Membership Door</div>
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-1">Online Application (7-Day Open Call)</h1>
+        <p class="text-sm text-slate-600 mt-1 mb-6">The Founder's Rule: Age decides the network — 18–29 joins WNNN (Nurture NextGen Network); 30+ joins WGMN (Good Mother Network).</p>
+
+        {% if success and submitted_app %}
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+          <h2 class="text-lg font-extrabold">Application Received!</h2>
+          <p class="text-sm mt-1">Thank you, <strong>{{ submitted_app.full_name }}</strong>. Your application for <strong>{{ submitted_app.network }}</strong> at <strong>{{ submitted_app.org_unit.name }}</strong> has been recorded.</p>
+          <div class="mt-4 flex flex-wrap gap-3">
+            <a href="{% url 'accounts:claim' %}?email={{ submitted_app.email }}" class="px-4 py-2 rounded-xl bg-woddi-600 text-white text-sm font-bold no-underline">Claim Account & Set Password</a>
+            <a href="{% url 'accounts:login' %}" class="px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-bold no-underline">Go to Sign In</a>
+          </div>
+        </div>
+        {% else %}
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">First Name *</label>
+              <input type="text" name="first_name" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Last Name *</label>
+              <input type="text" name="last_name" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Email Address *</label>
+              <input type="email" name="email" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Phone / WhatsApp</label>
+              <input type="text" name="phone" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Age Band (Founder's Network Rule) *</label>
+              <select name="age_band" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+                <option value="30+">30 and above — WGMN (Good Mother Network)</option>
+                <option value="18-29">18 to 29 — WNNN (Nurture NextGen Network)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Position Considered</label>
+              <select name="role_applied" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+                <option value="">General Member / Volunteer</option>
+                {% for code, label in positions %}
+                <option value="{{ code }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Target Unit / Country *</label>
+              <select name="org_unit_id" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+                {% for c in countries %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+                {% for s in states %}
+                <option value="{{ s.id }}">{{ s.name }} ({{ s.parent.name }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">State / Region</label>
+              <input type="text" name="state" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">LGA / District</label>
+              <input type="text" name="lga" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Motivation (minimum 20 characters) *</label>
+            <textarea name="motivation" rows="4" required minlength="20" placeholder="Tell us why you want to serve with WODDI..." class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm"></textarea>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Create Password (optional, to begin 7-Day Activation now)</label>
+              <input type="password" name="password" minlength="8" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div class="flex items-end pb-2">
+              <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700">
+                <input type="checkbox" name="start_open7" value="1">
+                Begin 7-Day Open Call Activation immediately
+              </label>
+            </div>
+          </div>
+          <input type="hidden" name="referral_code" value="{{ stored_ref }}">
+          <button type="submit" class="w-full rounded-xl bg-woddi-600 px-5 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-woddi-700 cursor-pointer border-0">
+            Submit Application
+          </button>
+        </form>
+        {% endif %}
+
+      {% elif door_mode == 'referral_paused' %}
+        <div class="text-xs font-extrabold uppercase tracking-wider text-amber-600">Referral Form Paused</div>
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-1">{{ network }} Referral Activation is Currently Paused</h1>
+        <p class="text-sm text-slate-600 mt-2">This referral activation form has been temporarily paused by WODDI Headquarters. If you have already registered, please sign in through the Candidate Door.</p>
+        <div class="mt-5">
+          <a href="{% url 'accounts:candidate_door' %}" class="px-4 py-2.5 rounded-xl bg-woddi-600 text-white text-sm font-bold no-underline">Open Candidate Sign-In</a>
+        </div>
+
+      {% elif door_mode == 'referral_join' %}
+        <div class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-extrabold {% if network == 'WNNN' %}bg-lime-100 text-lime-800{% else %}bg-pink-100 text-woddi-700{% endif %}">
+          {{ network }} · 3-Day Referral Activation
+        </div>
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-2">Begin Your {{ network }} 3-Day Referral Activation</h1>
+        <p class="text-sm text-slate-600 mt-1 mb-6">Complete your registration below to unlock Day 1 of your 3-Day Volunteer Leadership Activation Pack. Completing this activation and readiness assessment is not an automatic appointment.</p>
+
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">First Name *</label>
+              <input type="text" name="first_name" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Last Name *</label>
+              <input type="text" name="last_name" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Email Address *</label>
+              <input type="email" name="email" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Phone / WhatsApp Number *</label>
+              <input type="text" name="phone" required placeholder="+234..." class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Date of Birth</label>
+              <input type="date" name="birth_date" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Preferred Language *</label>
+              <select name="preferred_locale" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="pt">Português</option>
+                <option value="ar">العربية</option>
+                <option value="sw">Kiswahili</option>
+                <option value="ha">Hausa</option>
+                <option value="yo">Yorùbá</option>
+                <option value="ig">Igbo</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Referral Source *</label>
+              <select name="source_cat" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+                <option value="focal_person">Country Focal Person / Representative</option>
+                <option value="volunteer_leader">WODDI Volunteer Leader</option>
+                <option value="individual">Individual / Self</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Name of Person Who Referred You *</label>
+              <input type="text" name="referrer_name" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Position Considered ({{ network }}) *</label>
+            <select name="role_considered" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+              {% for code, label in positions %}
+              <option value="{{ code }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Country *</label>
+              <select name="country_unit" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+                {% for c in countries %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">State / Region</label>
+              <input type="text" name="state_text" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">LGA / District / Cluster</label>
+              <input type="text" name="lga_text" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Create Password (min 8 chars) *</label>
+              <input type="password" name="password" minlength="8" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Confirm Password *</label>
+              <input type="password" name="confirm_password" minlength="8" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          <label class="flex items-start gap-2.5 text-xs text-slate-700 font-medium pt-1">
+            <input type="checkbox" name="consent" value="1" required class="mt-0.5">
+            <span>I understand that completing the 3-Day Referral Activation and Readiness Assessment is a mandatory readiness process and does not constitute an automatic leadership appointment.</span>
+          </label>
+          <button type="submit" class="w-full rounded-xl bg-woddi-600 px-5 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-woddi-700 cursor-pointer border-0">
+            Create Account & Start Day 1 Now
+          </button>
+        </form>
+
+      {% elif door_mode == 'candidate' %}
+        <div class="text-xs font-extrabold uppercase tracking-wider text-woddi-600">Referral Activation Door</div>
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-1">Continue Your 3-Day or 7-Day Activation</h1>
+        <p class="text-sm text-slate-600 mt-1 mb-6">Sign in below to resume your candidate activation and complete your Understanding & Readiness Assessment.</p>
+
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+            <input type="email" name="email" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+            <input type="password" name="password" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+          </div>
+          <button type="submit" class="w-full rounded-xl bg-woddi-600 px-5 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-woddi-700 cursor-pointer border-0">
+            Continue My Activation
+          </button>
+        </form>
+
+        <div class="mt-6 pt-6 border-t border-slate-200">
+          <div class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-3">Starting a New 3-Day Referral Activation?</div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <a href="{% url 'accounts:referral_join' 'WGMN' %}" class="rounded-xl border border-pink-200 bg-pink-50 px-4 py-3 text-center text-sm font-extrabold text-woddi-700 no-underline hover:bg-pink-100">
+              Start WGMN Activation
+            </a>
+            <a href="{% url 'accounts:referral_join' 'WNNN' %}" class="rounded-xl border border-lime-300 bg-lime-50 px-4 py-3 text-center text-sm font-extrabold text-lime-900 no-underline hover:bg-lime-100">
+              Start WNNN Activation
+            </a>
+          </div>
+        </div>
+
+      {% elif door_mode == 'refland' %}
+        <div class="text-xs font-extrabold uppercase tracking-wider text-woddi-600">Personal WODDI Invitation</div>
+        {% if ref %}
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-1">{{ ref.referrer.full_name|default:"WODDI Leadership" }} Invited You to Join {{ ref.network }}</h1>
+        <p class="text-sm text-slate-600 mt-2">
+          {% if ref.org_unit %}Target Unit: <strong>{{ ref.org_unit.name }}</strong> · {% endif %}
+          {% if role_label %}Position Considered: <strong>{{ role_label }}</strong>{% else %}General Network Membership & Leadership{% endif %}
+        </p>
+        {% else %}
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-1">Welcome to the WODDI Network</h1>
+        <p class="text-sm text-slate-600 mt-2">Referral Code: <code>{{ code }}</code></p>
+        {% endif %}
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a href="{% url 'accounts:apply' %}" class="px-5 py-3 rounded-xl bg-woddi-600 text-white text-sm font-extrabold no-underline">Apply for Leadership</a>
+          <a href="{% url 'accounts:volunteer_register' %}" class="px-5 py-3 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-extrabold no-underline">Join as Volunteer Member</a>
+          <a href="{% url 'accounts:login' %}" class="px-5 py-3 rounded-xl text-slate-600 text-sm font-bold no-underline">Already Registered? Sign In</a>
+        </div>
+
+      {% elif door_mode == 'volunteer' %}
+        <div class="text-xs font-extrabold uppercase tracking-wider text-woddi-600">Community & Volunteer Registration</div>
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-1">{% if preset_network %}{{ preset_network }} Network Registration{% else %}WODDI Volunteer Registration{% endif %}</h1>
+        <p class="text-sm text-slate-600 mt-1 mb-6">Join the Pan-African movement empowering women and nurturing the next generation.</p>
+
+        {% if success and created_profile %}
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+          <h2 class="text-lg font-extrabold">Welcome to {{ created_profile.network }}, {{ created_profile.full_name }}!</h2>
+          <p class="text-sm mt-1">Your volunteer registration is complete. Set your password now to access your dashboard.</p>
+          <div class="mt-4">
+            <a href="{% url 'accounts:claim' %}?email={{ created_profile.email }}" class="px-4 py-2.5 rounded-xl bg-woddi-600 text-white text-sm font-bold no-underline">Create My Login Password</a>
+          </div>
+        </div>
+        {% else %}
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">First Name *</label>
+              <input type="text" name="first_name" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Last Name *</label>
+              <input type="text" name="last_name" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Email Address *</label>
+              <input type="email" name="email" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Phone / WhatsApp *</label>
+              <input type="text" name="phone" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          {% if not preset_network %}
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Age Band (Network Assignment) *</label>
+            <select name="age_band" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+              <option value="30+">30+ years — WGMN (Good Mother Network)</option>
+              <option value="18-29">18–29 years — WNNN (Nurture NextGen Network)</option>
+            </select>
+          </div>
+          {% endif %}
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Country *</label>
+              <select name="country" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+                {% for c in countries %}
+                <option value="{{ c.name }}">{{ c.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">State / Region</label>
+              <input type="text" name="state" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">LGA / District</label>
+              <input type="text" name="lga" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+            </div>
+          </div>
+          <button type="submit" class="w-full rounded-xl bg-woddi-600 px-5 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-woddi-700 cursor-pointer border-0">
+            Complete Volunteer Registration
+          </button>
+        </form>
+        {% endif %}
+
+      {% elif door_mode == 'claim' %}
+        <div class="text-xs font-extrabold uppercase tracking-wider text-woddi-600">Account Claim Wizard</div>
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-1">Claim Your WODDI Account</h1>
+        <p class="text-sm text-slate-600 mt-1 mb-6">Approved applicants and directory leaders can set their password here to activate their login.</p>
+
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="step" value="{{ step }}">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Registered Email Address *</label>
+            <input type="email" name="email" value="{{ email }}" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+          </div>
+          {% if step == '2' and matched_profile %}
+          <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-xs text-slate-700">
+            Account found: <strong>{{ matched_profile.full_name }}</strong> ({{ matched_profile.network }}{% if matched_profile.org_unit %} · {{ matched_profile.org_unit.name }}{% endif %})
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Create New Password (min 8 characters) *</label>
+            <input type="password" name="password" minlength="8" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Confirm New Password *</label>
+            <input type="password" name="confirm_password" minlength="8" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+          </div>
+          <button type="submit" class="w-full rounded-xl bg-woddi-600 px-5 py-3 text-sm font-extrabold text-white border-0 cursor-pointer">
+            Set Password & Sign In
+          </button>
+          {% else %}
+          <button type="submit" class="w-full rounded-xl bg-woddi-600 px-5 py-3 text-sm font-extrabold text-white border-0 cursor-pointer">
+            Check Eligibility
+          </button>
+          {% endif %}
+        </form>
+
+      {% elif door_mode == 'id_start' %}
+        <div class="text-xs font-extrabold uppercase tracking-wider text-woddi-600">Volunteer ID Door</div>
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-1">Enter with WODDI Volunteer ID</h1>
+        <p class="text-sm text-slate-600 mt-1 mb-6">Enter your official WODDI Volunteer ID or Membership Number (e.g., CR101, WODDI-NG-001).</p>
+
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="step" value="{{ step }}">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">WODDI Volunteer ID / Membership No *</label>
+            <input type="text" name="idno" value="{{ idno }}" required placeholder="e.g. WODDI-NG-001 or CR101" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm uppercase">
+          </div>
+          {% if step == '2' and hit %}
+          <div class="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-700 space-y-1">
+            <div><strong>Name:</strong> {{ hit.full_name }}</div>
+            <div><strong>Network / Unit:</strong> {{ hit.network }}{% if hit.org_unit %} · {{ hit.org_unit.name }}{% endif %}</div>
+            <div><strong>Account Email:</strong> {{ masked_email }}</div>
+          </div>
+          {% if claimed %}
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Enter Your Password *</label>
+            <input type="password" name="password" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+          </div>
+          {% else %}
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Create Password (min 8 chars) *</label>
+            <input type="password" name="password" minlength="8" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Confirm Password *</label>
+            <input type="password" name="confirm_password" minlength="8" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm">
+          </div>
+          {% endif %}
+          <button type="submit" class="w-full rounded-xl bg-woddi-600 px-5 py-3 text-sm font-extrabold text-white border-0 cursor-pointer">
+            {% if claimed %}Sign In{% else %}Activate Account & Sign In{% endif %}
+          </button>
+          {% else %}
+          <button type="submit" class="w-full rounded-xl bg-woddi-600 px-5 py-3 text-sm font-extrabold text-white border-0 cursor-pointer">
+            Look Up My WODDI ID
+          </button>
+          {% endif %}
+        </form>
+      {% endif %}
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white px-6 py-4 text-center text-xs text-slate-500">
+    Women of Vision Development Initiative (WODDI) · WGMN & WNNN · <a href="{% url 'accounts:help' %}" class="text-woddi-600 font-semibold no-underline">Help & Support</a>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,112 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">360° Member &amp; Leader Record · {{ member.network }}</span>
+  <h1>{{ member.full_name }}</h1>
+  <p>{{ member.email }} · {{ member.phone|default:"No phone" }} · {{ member.country }} · Status: <strong>{{ member.get_status_display }}</strong></p>
+  <div style="margin-top:12px; display:flex; gap:8px;">
+    {% if request.user.is_in_hq %}
+    <a href="{% url 'onboarding:view_as' member.id %}" class="wdos-btn wdos-btn-gold wdos-btn-sm">View As {{ member.first_name }}</a>
+    {% endif %}
+    <a href="{% url 'onboarding:members' %}" class="wdos-btn wdos-btn-ghost wdos-btn-sm">← Back to Directory</a>
+  </div>
+</div>
+
+<div class="wdos-grid-2">
+  <!-- Audited Status State Machine -->
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:8px;">Audited Lifecycle Status Transition</h2>
+    <p class="wdos-card-sub" style="margin-bottom:12px;">Current Status: <span class="wdos-badge wdos-badge-green">{{ member.get_status_display }}</span>. Allowed next transitions are enforced by the WDOS state machine.</p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="transition_status">
+      <div class="wdos-field">
+        <label class="wdos-label">Transition To</label>
+        <select name="new_status" class="wdos-select">
+          {% for st_code in allowed_next %}
+          <option value="{{ st_code }}">{{ st_code|upper }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Governance Reason (Minimum 5 characters, logged to Audit Trail)</label>
+        <input type="text" name="reason" class="wdos-input" placeholder="e.g. Completed readiness verification" required>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Execute Status Transition</button>
+    </form>
+  </div>
+
+  <!-- Issue Commendation / Notice -->
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:8px;">Post Official Notice / Commendation</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="send_notice">
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Notice Type</label>
+          <select name="kind" class="wdos-select">
+            <option value="acknowledgement">Commendation / Acknowledgement</option>
+            <option value="reminder">Compliance Reminder</option>
+            <option value="warning">Governance Warning</option>
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Title</label>
+          <input type="text" name="title" class="wdos-input" required>
+        </div>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Message</label>
+        <textarea name="body" class="wdos-textarea" style="min-height:60px;" required></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-outline">Post Notice to Record</button>
+    </form>
+  </div>
+</div>
+
+<div class="wdos-grid-2">
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Leadership Seat History ({{ roles|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Role</th><th>Unit</th><th>Started</th><th>Ended</th></tr></thead>
+        <tbody>
+          {% for r in roles %}
+          <tr>
+            <td><strong>{{ r.network_title }}</strong></td>
+            <td>{{ r.org_unit.name }}</td>
+            <td>{{ r.starts_at|date:"M d, Y" }}</td>
+            <td>{{ r.ends_at|date:"M d, Y"|default:"Active" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="wdos-empty">No leadership seats recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Governance Audit Trail ({{ audit_logs|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Date</th><th>Actor</th><th>Action</th><th>Summary</th></tr></thead>
+        <tbody>
+          {% for log in audit_logs %}
+          <tr>
+            <td>{{ log.created_at|date:"M d, H:i" }}</td>
+            <td>{{ log.actor.full_name|default:"System" }}</td>
+            <td><code>{{ log.action }}</code></td>
+            <td>{{ log.summary }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="wdos-empty">No audit events recorded for this profile.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

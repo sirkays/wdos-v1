@@ -1,0 +1,154 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Reporting, Record Keeping &amp; Compliance</span>
+  <h1>Leadership Reporting &amp; Field Records</h1>
+  <p>Submit monthly leadership reports (including Nil Reports), review subordinate submissions, log grassroots activities, and escalate operational issues.</p>
+  <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+    <a href="?subtab=dashboard" class="wdos-btn wdos-btn-sm {% if subtab == 'dashboard' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Submit Report</a>
+    <a href="?subtab=mine" class="wdos-btn wdos-btn-sm {% if subtab == 'mine' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">My Reports ({{ my_reports|length }})</a>
+    <a href="?subtab=review" class="wdos-btn wdos-btn-sm {% if subtab == 'review' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Supervisor Review ({{ review_queue|length }})</a>
+    <a href="?subtab=records" class="wdos-btn wdos-btn-sm {% if subtab == 'records' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Field Activities ({{ activities|length }})</a>
+    <a href="?subtab=issues" class="wdos-btn wdos-btn-sm {% if subtab == 'issues' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">Operational Issues ({{ issues|length }})</a>
+  </div>
+</div>
+
+{% if selected_report %}
+<div class="wdos-card" style="border: 2px solid #047857;">
+  <div class="wdos-card-head">
+    <div>
+      <span class="wdos-kicker">Report v{{ selected_report.version }} · {{ selected_report.period_label }} · {{ selected_report.org_unit.name }}</span>
+      <h2 class="wdos-card-title">{{ selected_report.title }}</h2>
+      <div class="wdos-card-sub">Author: {{ selected_report.author.full_name }} · Status: <strong>{{ selected_report.get_status_display }}</strong></div>
+    </div>
+    <a href="{% url 'onboarding:reporting' %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Close Report</a>
+  </div>
+  {% if selected_report.is_nil_report %}
+    <div class="wdos-alert wdos-alert-warning"><strong>Nil Report Declaration:</strong> {{ selected_report.nil_reason }}</div>
+  {% else %}
+    <p style="font-size:13.5px; color:#334155;"><strong>Summary:</strong> {{ selected_report.payload.summary }}</p>
+    <p style="font-size:13.5px; color:#334155;"><strong>Challenges:</strong> {{ selected_report.payload.challenges }}</p>
+    <p style="font-size:13.5px; color:#334155;"><strong>Next Steps:</strong> {{ selected_report.payload.next_steps }}</p>
+  {% endif %}
+
+  <form method="post" style="margin-top:14px; padding-top:12px; border-top:1px solid #e2e8f0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="review_report">
+    <select name="decision" class="wdos-select" style="width:160px;">
+      <option value="approved">Approve Report</option>
+      <option value="returned">Return for Revision</option>
+      <option value="escalated">Escalate to HQ</option>
+    </select>
+    <input type="text" name="reviewer_note" value="{{ selected_report.reviewer_note }}" class="wdos-input" placeholder="Supervisor review note..." style="width:280px;">
+    <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Submit Review Decision</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="wdos-grid-2">
+  <!-- Submit Leadership Report -->
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">File Leadership Report</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="submit_report">
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Report Template</label>
+          <select name="template_id" class="wdos-select">
+            {% for tpl in templates %}
+            <option value="{{ tpl.id }}">{{ tpl.title }} ({{ tpl.frequency }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Reporting Period</label>
+          <input type="text" name="period_label" value="2026-10" class="wdos-input" required>
+        </div>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Report Title</label>
+        <input type="text" name="title" class="wdos-input" placeholder="e.g. Monthly Country Leadership Report" required>
+      </div>
+      <div class="wdos-field">
+        <label style="font-size:12.5px; font-weight:600;"><input type="checkbox" name="is_nil_report" value="1"> Submit as Nil Report (No activities held this period)</label>
+        <input type="text" name="nil_reason" class="wdos-input" placeholder="If Nil Report, state reason..." style="margin-top:4px;">
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Key Activities &amp; Achievements Summary</label>
+        <textarea name="summary" class="wdos-textarea" style="min-height:70px;"></textarea>
+      </div>
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Challenges / Escalations</label>
+          <input type="text" name="challenges" class="wdos-input">
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Next Period Priorities</label>
+          <input type="text" name="next_steps" class="wdos-input">
+        </div>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Submit Report</button>
+    </form>
+  </div>
+
+  <!-- Log Field Activity & Operational Issue -->
+  <div>
+    <div class="wdos-card">
+      <h2 class="wdos-card-title" style="margin-bottom:10px;">Log Grassroots Field Activity</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="log_activity">
+        <div class="wdos-grid-2">
+          <div class="wdos-field">
+            <label class="wdos-label">Activity Title</label>
+            <input type="text" name="title" class="wdos-input" required>
+          </div>
+          <div class="wdos-field">
+            <label class="wdos-label">Beneficiaries Reached</label>
+            <input type="number" name="beneficiaries_reached" value="25" class="wdos-input">
+          </div>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Summary</label>
+          <input type="text" name="summary" class="wdos-input">
+        </div>
+        <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">Save Field Activity</button>
+      </form>
+    </div>
+
+    <div class="wdos-card">
+      <h2 class="wdos-card-title" style="margin-bottom:10px;">Submitted Reports Register</h2>
+      <div class="wdos-table-wrap">
+        <table class="wdos-table">
+          <thead><tr><th>Title</th><th>Author</th><th>Period</th><th>Status</th><th>Open</th></tr></thead>
+          <tbody>
+            {% for r in review_queue %}
+            <tr>
+              <td><strong>{{ r.title }}</strong></td>
+              <td>{{ r.author.full_name }}</td>
+              <td>{{ r.period_label }}</td>
+              <td><span class="wdos-badge wdos-badge-slate">{{ r.get_status_display }}</span></td>
+              <td><a href="{% url 'onboarding:report_detail' r.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Review →</a></td>
+            </tr>
+            {% empty %}
+            {% for r in my_reports %}
+            <tr>
+              <td><strong>{{ r.title }}</strong></td>
+              <td>{{ r.author.full_name }}</td>
+              <td>{{ r.period_label }}</td>
+              <td><span class="wdos-badge wdos-badge-slate">{{ r.get_status_display }}</span></td>
+              <td><a href="{% url 'onboarding:report_detail' r.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Open →</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="wdos-empty">No reports submitted yet.</td></tr>
+            {% endfor %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

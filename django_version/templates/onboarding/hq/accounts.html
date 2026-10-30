@@ -1,0 +1,211 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">HQ Master Directory · Accounts &amp; Seat Control</span>
+  <h1>HQ User Accounts &amp; Seat Management</h1>
+  <p>Provision user accounts, assign leadership seats and HQ functions, generate printable temporary password sheets, reset credentials, and preview any workspace via View As.</p>
+</div>
+
+{% if temp_sheet %}
+<div class="wdos-card" style="border: 2px solid #047857; background: #f0fdf4;">
+  <div class="wdos-card-head">
+    <div>
+      <h2 class="wdos-card-title">Printable Temporary Password Sheet ({{ temp_sheet|length }} Accounts)</h2>
+      <div class="wdos-card-sub">Generated for first-sign-in field leaders. Print or save as PDF for secure distribution.</div>
+    </div>
+    <button type="button" onclick="window.print()" class="wdos-btn wdos-btn-primary wdos-btn-sm">Print Password Sheet</button>
+  </div>
+  <div class="wdos-table-wrap">
+    <table class="wdos-table">
+      <thead><tr><th>Full Name</th><th>Email</th><th>Network</th><th>Unit &amp; Role</th><th>Temporary Password</th></tr></thead>
+      <tbody>
+        {% for row in temp_sheet %}
+        <tr>
+          <td><strong>{{ row.name }}</strong></td>
+          <td>{{ row.email }}</td>
+          <td>{{ row.network }}</td>
+          <td>{{ row.role }} · {{ row.unit }}</td>
+          <td><code>{{ row.temp_password }}</code></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="wdos-grid-2">
+  <!-- Create New Account -->
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Provision New Account &amp; Seat</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_account">
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">First Name</label>
+          <input type="text" name="first_name" class="wdos-input" required>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Last Name</label>
+          <input type="text" name="last_name" class="wdos-input" required>
+        </div>
+      </div>
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Email Address</label>
+          <input type="email" name="email" class="wdos-input" required>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Network</label>
+          <select name="network" class="wdos-select">
+            <option value="WGMN">WGMN (Women 30+)</option>
+            <option value="WNNN">WNNN (Nurture 18–29)</option>
+          </select>
+        </div>
+      </div>
+      <div class="wdos-grid-3">
+        <div class="wdos-field">
+          <label class="wdos-label">Organisational Unit</label>
+          <select name="org_unit_id" class="wdos-select">
+            {% for u in units %}
+            <option value="{{ u.id }}">{{ u.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Leadership Seat (Optional)</label>
+          <select name="role" class="wdos-select">
+            <option value="">— No Seat (Member/Staff) —</option>
+            {% for code, label in roles %}
+            <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">HQ Function (Optional)</label>
+          <select name="hq_function" class="wdos-select">
+            <option value="">— Field / Non-HQ —</option>
+            {% for code, label in hq_functions %}
+            <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Create Account</button>
+    </form>
+  </div>
+
+  <!-- Bulk Credential Sheet Generator -->
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Leader Credential Sheet &amp; Quick Filters</h2>
+    <p class="wdos-card-sub" style="margin-bottom:14px;">Generate temporary sign-in credentials for seated leaders who have not yet signed in, or filter the master directory below.</p>
+    <form method="post" style="margin-bottom:16px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="complete_sheet">
+      <button type="submit" class="wdos-btn wdos-btn-gold">Generate Printable Password Sheet</button>
+    </form>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a href="?f=all&q={{ q }}" class="wdos-btn {% if flt == 'all' %}wdos-btn-primary{% else %}wdos-btn-outline{% endif %} wdos-btn-sm">All Accounts</a>
+      <a href="?f=leaders&q={{ q }}" class="wdos-btn {% if flt == 'leaders' %}wdos-btn-primary{% else %}wdos-btn-outline{% endif %} wdos-btn-sm">Seated Leaders</a>
+      <a href="?f=never&q={{ q }}" class="wdos-btn {% if flt == 'never' %}wdos-btn-primary{% else %}wdos-btn-outline{% endif %} wdos-btn-sm">Never Signed In</a>
+      <a href="?f=pending&q={{ q }}" class="wdos-btn {% if flt == 'pending' %}wdos-btn-primary{% else %}wdos-btn-outline{% endif %} wdos-btn-sm">Pending Acceptance</a>
+      <a href="?f=suspended&q={{ q }}" class="wdos-btn {% if flt == 'suspended' %}wdos-btn-primary{% else %}wdos-btn-outline{% endif %} wdos-btn-sm">Suspended</a>
+    </div>
+  </div>
+</div>
+
+<!-- Accounts Table -->
+<div class="wdos-card">
+  <div class="wdos-card-head">
+    <h2 class="wdos-card-title">User Accounts Register ({{ profiles|length }})</h2>
+    <form method="get" style="display:flex; gap:8px;">
+      <input type="hidden" name="f" value="{{ flt }}">
+      <input type="text" name="q" value="{{ q }}" class="wdos-input" placeholder="Search name, email, WODDI ID..." style="width:260px;">
+      <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Search</button>
+    </form>
+  </div>
+  <div class="wdos-table-wrap">
+    <table class="wdos-table">
+      <thead>
+        <tr>
+          <th>Person &amp; ID</th>
+          <th>Network / Unit</th>
+          <th>Active Seats &amp; HQ Role</th>
+          <th>Status</th>
+          <th>Seat / Role Assignment</th>
+          <th>Credentials &amp; Controls</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in profiles %}
+        <tr>
+          <td>
+            <strong>{{ p.full_name }}</strong>
+            <div style="font-size:11.5px; color:#64748b;">{{ p.email }}</div>
+            {% if p.membership_no %}<code style="font-size:11px;">{{ p.membership_no }}</code>{% endif %}
+          </td>
+          <td>
+            <span class="wdos-badge {% if p.network == 'WGMN' %}wdos-badge-wgmn{% else %}wdos-badge-wnnn{% endif %}">{{ p.network }}</span>
+            <div style="font-size:11.5px; color:#64748b; margin-top:3px;">{{ p.org_unit.name|default:p.country }}</div>
+          </td>
+          <td>
+            {% for r in p.get_roles %}
+              <div><span class="wdos-badge wdos-badge-green">{{ r.network_title }}</span> <small>({{ r.org_unit.name }})</small></div>
+            {% empty %}
+              <span style="color:#64748b; font-size:12px;">No field seat</span>
+            {% endfor %}
+            {% if p.hq_function %}
+              <div style="margin-top:4px;"><span class="wdos-badge wdos-badge-blue">HQ: {{ p.hq_function }}</span></div>
+            {% endif %}
+          </td>
+          <td>
+            <span class="wdos-badge {% if p.is_suspended %}wdos-badge-red{% else %}wdos-badge-slate{% endif %}">
+              {% if p.is_suspended %}Suspended{% else %}{{ p.get_status_display }}{% endif %}
+            </span>
+          </td>
+          <td>
+            <form method="post" style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="assign_seat">
+              <input type="hidden" name="profile_id" value="{{ p.id }}">
+              <select name="role" class="wdos-select" style="width:130px; padding:4px 6px; font-size:11.5px;">
+                {% for code, label in roles %}
+                <option value="{{ code }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              <select name="org_unit_id" class="wdos-select" style="width:130px; padding:4px 6px; font-size:11.5px;">
+                {% for u in units %}
+                <option value="{{ u.id }}" {% if p.org_unit_id == u.id %}selected{% endif %}>{{ u.name }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">Seat</button>
+            </form>
+          </td>
+          <td>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+              <a href="{% url 'onboarding:view_as' p.id %}" class="wdos-btn wdos-btn-primary wdos-btn-sm">View As</a>
+              <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reset_password">
+                <input type="hidden" name="profile_id" value="{{ p.id }}">
+                <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">Reset PW</button>
+              </form>
+              <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle_suspend">
+                <input type="hidden" name="profile_id" value="{{ p.id }}">
+                <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">{% if p.is_suspended %}Restore{% else %}Suspend{% endif %}</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="wdos-empty">No user accounts match your filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

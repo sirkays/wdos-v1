@@ -1,4 +1,4 @@
-﻿from django.conf import settings
+from django.conf import settings
 from django.db import models
 
 
@@ -22,6 +22,31 @@ class CandidateActivation(models.Model):
 
     class Meta:
         unique_together = ('profile', 'route')
+
+    @property
+    def role_considered(self):
+        return self.role or self.profile.role_applied
+
+    @property
+    def org_unit(self):
+        return self.profile.org_unit if self.profile_id else None
+
+    @property
+    def referrer_name(self):
+        return self.referral_code or 'Direct / Referred'
+
+    @property
+    def current_day(self):
+        done = self.steps.filter(status='completed').count()
+        return min(self.total_days, done + 1)
+
+    @property
+    def total_days(self):
+        return 3 if self.route == 'ref3' else 7
+
+    @property
+    def extension_requested_at(self):
+        return self.created_at if self.extension_status == 'requested' else None
 
 
 class ActivationStep(models.Model):

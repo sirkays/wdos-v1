@@ -1,0 +1,109 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Safeguarding, Conduct &amp; Ethics</span>
+  <h1>Confidential Case Registry</h1>
+  <p>Manage confidential safeguarding, conduct, conflict-of-interest, and financial integrity cases with strict status transitions.</p>
+</div>
+
+{% if selected_case %}
+<div class="wdos-card" style="border: 2px solid #b91c1c;">
+  <div class="wdos-card-head">
+    <div>
+      <span class="wdos-kicker">Confidential Case · {{ selected_case.category|upper }} · Severity: {{ selected_case.severity|upper }}</span>
+      <h2 class="wdos-card-title">{{ selected_case.title }}</h2>
+      <div class="wdos-card-sub">Status: <strong>{{ selected_case.status|upper }}</strong> · Filed by {{ selected_case.reporter.full_name|default:"Confidential" }}</div>
+    </div>
+    <a href="{% url 'onboarding:cases' %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Close Case</a>
+  </div>
+  <p style="font-size:13.5px; color:#334155;">{{ selected_case.description }}</p>
+
+  <h3 style="font-size:14px; margin:14px 0 8px;">Case Investigation Updates</h3>
+  {% for u in selected_case.updates.all %}
+  <div style="padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:13px;">
+    <strong>{{ u.author.full_name|default:"Officer" }}</strong> ({{ u.created_at|date:"M d, H:i" }}): {{ u.note }}
+  </div>
+  {% endfor %}
+
+  <form method="post" style="margin-top:12px;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="update_case">
+    <div class="wdos-grid-2">
+      <div class="wdos-field">
+        <label class="wdos-label">Transition Case Status</label>
+        <select name="status" class="wdos-select">
+          <option value="{{ selected_case.status }}">{{ selected_case.status|upper }} (Unchanged)</option>
+          {% for st_code in allowed_next %}
+          <option value="{{ st_code }}">{{ st_code|upper }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Investigation / Resolution Note</label>
+        <input type="text" name="note" class="wdos-input" required>
+      </div>
+    </div>
+    <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Record Case Update</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="wdos-grid-3">
+  <div class="wdos-card" style="grid-column: span 1;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">File Confidential Case</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="file_case">
+      <div class="wdos-field">
+        <label class="wdos-label">Category</label>
+        <select name="category" class="wdos-select">
+          <option value="safeguarding">Safeguarding</option>
+          <option value="conduct">Code of Conduct Breach</option>
+          <option value="financial">Financial Integrity</option>
+          <option value="grievance">Grievance / Dispute</option>
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Severity</label>
+        <select name="severity" class="wdos-select">
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+          <option value="medium">Medium</option>
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Case Title</label>
+        <input type="text" name="title" class="wdos-input" required>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Confidential Details</label>
+        <textarea name="description" class="wdos-textarea" required></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-danger">Submit Confidential Case</button>
+    </form>
+  </div>
+
+  <div class="wdos-card" style="grid-column: span 2;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Cases Register ({{ cases|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Title</th><th>Category</th><th>Severity</th><th>Status</th><th>Inspect</th></tr></thead>
+        <tbody>
+          {% for c in cases %}
+          <tr>
+            <td><strong>{{ c.title }}</strong></td>
+            <td>{{ c.category }}</td>
+            <td><span class="wdos-badge wdos-badge-red">{{ c.severity }}</span></td>
+            <td><span class="wdos-badge wdos-badge-slate">{{ c.status }}</span></td>
+            <td><a href="{% url 'onboarding:case_detail' c.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Open →</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="wdos-empty">No cases filed.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_doors
 
 app_name = 'accounts'
 
@@ -38,4 +39,15 @@ urlpatterns = [
     path('help/', views.help_view, name='help'),
     path('privacy/', views.privacy_view, name='privacy'),
     path('terms/', views.terms_view, name='terms'),
+
+    # Public Entry Doors (apply.js, join.js, candidate.js, refland.js, volunteer.js, claim.js, idstart.js)
+    path('apply/', views_doors.apply_view, name='apply'),
+    path('referral-join/<str:code>/', views_doors.referral_join_view, name='referral_join'),
+    path('candidate/', views_doors.candidate_door_view, name='candidate_door'),
+    path('r/<str:code>/', views_doors.referral_landing_view, name='referral_landing'),
+    path('volunteer/', views_doors.volunteer_register_view, name='volunteer_register'),
+    path('wgmn/', views_doors.volunteer_register_view, {'preset_network': 'WGMN'}, name='volunteer_wgmn'),
+    path('wnnn/', views_doors.volunteer_register_view, {'preset_network': 'WNNN'}, name='volunteer_wnnn'),
+    path('claim/', views_doors.claim_view, name='claim'),
+    path('id/', views_doors.id_start_view, name='id_start'),
 ]

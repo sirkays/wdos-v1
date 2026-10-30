@@ -1,0 +1,155 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">HQ Activation &amp; Readiness Command</span>
+  <h1>Candidate Activation &amp; Readiness Pipeline</h1>
+  <p>Manage 3-Day Referral Candidates, 7-Day Open Applicants, 14-Day Post-Activation Activity, Readiness Scoring, and Competitive Seat Appointment.</p>
+  <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+    <a href="?route=ref3" class="wdos-btn {% if route == 'ref3' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">3-Day Referral (ref3)</a>
+    <a href="?route=open7" class="wdos-btn {% if route == 'open7' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">7-Day Open Applicant (open7)</a>
+    <a href="?route=d14" class="wdos-btn {% if route == 'd14' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">14-Day Activity Tracker (d14)</a>
+  </div>
+</div>
+
+<!-- Referral Form Pause / Resume Controls -->
+<div class="wdos-grid-2" style="margin-bottom:16px;">
+  <div class="wdos-card" style="margin-bottom:0; display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <span class="wdos-badge wdos-badge-wgmn">WGMN 3-Day Referral Link</span>
+      <div style="font-weight:700; margin-top:4px;"><code>/join/WGMN/</code> — {% if wgmn_form.is_active %}<span style="color:#065f46;">ACTIVE</span>{% else %}<span style="color:#b91c1c;">PAUSED</span>{% endif %}</div>
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="toggle_ref_form">
+      <input type="hidden" name="code" value="WGMN">
+      <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">{% if wgmn_form.is_active %}Pause Form{% else %}Resume Form{% endif %}</button>
+    </form>
+  </div>
+  <div class="wdos-card" style="margin-bottom:0; display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <span class="wdos-badge wdos-badge-wnnn">WNNN 3-Day Referral Link</span>
+      <div style="font-weight:700; margin-top:4px;"><code>/join/WNNN/</code> — {% if wnnn_form.is_active %}<span style="color:#065f46;">ACTIVE</span>{% else %}<span style="color:#b91c1c;">PAUSED</span>{% endif %}</div>
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="toggle_ref_form">
+      <input type="hidden" name="code" value="WNNN">
+      <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">{% if wnnn_form.is_active %}Pause Form{% else %}Resume Form{% endif %}</button>
+    </form>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="wdos-kpi-grid">
+  <div class="wdos-kpi"><div class="num">{{ kpis.registered }}</div><div class="lbl">Registered</div></div>
+  <div class="wdos-kpi"><div class="num" style="color:#b45309;">{{ kpis.in_progress }}</div><div class="lbl">In Progress</div></div>
+  <div class="wdos-kpi"><div class="num" style="color:#065f46;">{{ kpis.completed }}</div><div class="lbl">Completed</div></div>
+  <div class="wdos-kpi"><div class="num" style="color:#065f46;">{{ kpis.selected }}</div><div class="lbl">Selected / Appointed</div></div>
+  <div class="wdos-kpi"><div class="num">{{ kpis.reserve }}</div><div class="lbl">Reserve Pool</div></div>
+  <div class="wdos-kpi"><div class="num">{{ kpis.extensions }}</div><div class="lbl">Extension Requests</div></div>
+</div>
+
+<!-- Filter Bar -->
+<form method="get" class="wdos-filter-bar">
+  <input type="hidden" name="route" value="{{ route }}">
+  <input type="text" name="q" value="{{ q }}" class="wdos-input" placeholder="Search candidate, email, referrer..." style="width:240px;">
+  <select name="net" class="wdos-select" style="width:150px;">
+    <option value="">All Networks</option>
+    <option value="WGMN" {% if net_filter == 'WGMN' %}selected{% endif %}>WGMN</option>
+    <option value="WNNN" {% if net_filter == 'WNNN' %}selected{% endif %}>WNNN</option>
+  </select>
+  <select name="stage" class="wdos-select" style="width:160px;">
+    <option value="">All Stages</option>
+    <option value="in_progress" {% if stage_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
+    <option value="completed" {% if stage_filter == 'completed' %}selected{% endif %}>Completed</option>
+    <option value="selected" {% if stage_filter == 'selected' %}selected{% endif %}>Selected</option>
+    <option value="expired" {% if stage_filter == 'expired' %}selected{% endif %}>Expired</option>
+  </select>
+  <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Filter</button>
+  <a href="?route={{ route }}&net={{ net_filter }}&stage={{ stage_filter }}&q={{ q }}&export=csv" class="wdos-btn wdos-btn-outline wdos-btn-sm">Export CSV</a>
+</form>
+
+<!-- Candidate Register -->
+<div class="wdos-card">
+  <div class="wdos-card-head">
+    <h2 class="wdos-card-title">Activation Candidates ({{ activations|length }})</h2>
+  </div>
+  <div class="wdos-table-wrap">
+    <table class="wdos-table">
+      <thead>
+        <tr>
+          <th>Candidate</th>
+          <th>Network / Route</th>
+          <th>Position &amp; Unit</th>
+          <th>Referrer</th>
+          <th>Progress</th>
+          <th>Status / Outcome</th>
+          <th>HQ Review &amp; Seat Appointment</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in activations %}
+        <tr>
+          <td>
+            <strong>{{ a.profile.full_name }}</strong>
+            <div style="font-size:11.5px; color:#64748b;">{{ a.profile.email }} · {{ a.profile.phone|default:"" }}</div>
+          </td>
+          <td>
+            <span class="wdos-badge {% if a.network == 'WGMN' %}wdos-badge-wgmn{% else %}wdos-badge-wnnn{% endif %}">{{ a.network }}</span>
+            <span class="wdos-badge wdos-badge-slate">{{ a.route }}</span>
+          </td>
+          <td>
+            <strong>{{ a.role_considered|default:"Leader Candidate" }}</strong>
+            <div style="font-size:11.5px; color:#64748b;">{{ a.org_unit.name|default:a.profile.country }}</div>
+          </td>
+          <td>{{ a.referrer_name|default:"Direct / Open" }}</td>
+          <td>Day {{ a.current_day }} / {{ a.total_days }}</td>
+          <td>
+            <span class="wdos-badge {% if a.status == 'completed' %}wdos-badge-green{% elif a.status == 'expired' %}wdos-badge-red{% else %}wdos-badge-amber{% endif %}">{{ a.status }}</span>
+            {% if a.outcome and a.outcome != 'pending' %}
+              <span class="wdos-badge wdos-badge-blue">{{ a.outcome }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <form method="post" style="display:inline-flex; gap:4px; align-items:center;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="review_candidate">
+                <input type="hidden" name="activation_id" value="{{ a.id }}">
+                <input type="number" name="short_score" value="7" min="0" max="8" class="wdos-input" style="width:52px; padding:4px 6px;" title="Readiness Score (0-8)">
+                <select name="outcome" class="wdos-select" style="width:125px; padding:4px 6px; font-size:12px;">
+                  <option value="selected">Selected</option>
+                  <option value="reserve">Reserve Pool</option>
+                  <option value="returned">Return w/ Note</option>
+                  <option value="redirected">Redirected</option>
+                </select>
+                <input type="text" name="reviewer_notes" class="wdos-input" placeholder="Review note" style="width:110px; padding:4px 6px; font-size:12px;">
+                <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">Save Review</button>
+              </form>
+              <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="appoint_candidate">
+                <input type="hidden" name="activation_id" value="{{ a.id }}">
+                <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Appoint to Seat</button>
+              </form>
+              {% if a.status == 'expired' or a.extension_requested_at %}
+              <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="decide_extension">
+                <input type="hidden" name="activation_id" value="{{ a.id }}">
+                <input type="hidden" name="days" value="3">
+                <button type="submit" class="wdos-btn wdos-btn-gold wdos-btn-sm">+3d Extension</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="wdos-empty">No activation candidates match your current filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

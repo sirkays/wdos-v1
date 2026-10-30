@@ -9,6 +9,7 @@ class OrgLevel(models.TextChoices):
     COUNTRY = 'country', 'Country'
     STATE_REGION = 'state_region', 'State / Region'
     DISTRICT_LGA = 'district_lga', 'District / LGA'
+    COMMUNITY_CLUSTER = 'community_cluster', 'Community Cluster'
     CHAPTER = 'chapter', 'Chapter'
 
 
@@ -20,14 +21,70 @@ class RoleCode(models.TextChoices):
     DEPUTY_COUNTRY_REP = 'deputy_country_rep', 'Deputy Country Representative'
     STATE_COORDINATOR = 'state_coordinator', 'State Coordinator'
     ASSISTANT_STATE_COORDINATOR = 'assistant_state_coordinator', 'Assistant State Coordinator'
+    STATE_SECRETARY = 'state_secretary', 'State / Regional Secretary'
     DISTRICT_COORDINATOR = 'district_coordinator', 'District / LGA Coordinator'
+    ASSISTANT_DISTRICT_COORDINATOR = 'assistant_district_coordinator', 'Assistant District / LGA Coordinator'
+    LGA_COORDINATOR = 'lga_coordinator', 'LGA / District Coordinator'
+    ASSISTANT_LGA_COORDINATOR = 'assistant_lga_coordinator', 'Assistant LGA / District Coordinator'
+    LGA_SECRETARY = 'lga_secretary', 'LGA / District Secretary'
+    WARD_COORDINATOR = 'ward_coordinator', 'Community Cluster / Ward Coordinator'
+    ASSISTANT_WARD_COORDINATOR = 'assistant_ward_coordinator', 'Assistant Community Cluster / Ward Coordinator'
+    WARD_SECRETARY = 'ward_secretary', 'Community Cluster / Ward Secretary'
+    CLUSTER_COORDINATOR = 'cluster_coordinator', 'Community Cluster Coordinator'
+    ASSISTANT_CLUSTER_COORDINATOR = 'assistant_cluster_coordinator', 'Assistant Community Cluster Coordinator'
     CHAPTER_LEAD = 'chapter_lead', 'Chapter Lead'
+    ASSISTANT_CHAPTER_LEAD = 'assistant_chapter_lead', 'Assistant Chapter Lead'
+    CHAPTER_COORDINATOR = 'chapter_coordinator', 'Chapter Coordinator'
+    ASSISTANT_CHAPTER_COORDINATOR = 'assistant_chapter_coordinator', 'Assistant Chapter Coordinator'
+    CHAPTER_SECRETARY = 'chapter_secretary', 'Chapter Secretary'
     VOLUNTEER = 'volunteer', 'Volunteer'
     MEMBER = 'member', 'Member'
     PROGRAMME_STAFF = 'programme_staff', 'Programme Staff'
     INSTITUTE_ADMIN = 'institute_admin', 'Institute Administrator'
     DONOR = 'donor', 'Donor'
     EXTERNAL_PARTNER = 'external_partner', 'External Partner'
+
+
+WNNN_ROLE_TITLES = {
+    'country_rep': 'Country Lead',
+    'deputy_country_rep': 'Deputy Country Lead',
+    'state_coordinator': 'State / Regional Lead',
+    'assistant_state_coordinator': 'Deputy State / Regional Lead',
+    'state_secretary': 'State / Regional Secretary',
+    'district_coordinator': 'LGA / District Lead',
+    'assistant_district_coordinator': 'Assistant LGA / District Lead',
+    'lga_coordinator': 'LGA / District Lead',
+    'assistant_lga_coordinator': 'Deputy LGA / District Lead',
+    'lga_secretary': 'LGA / District Secretary',
+    'ward_coordinator': 'Community Cluster Lead',
+    'assistant_ward_coordinator': 'Deputy Community Cluster Lead',
+    'ward_secretary': 'Community Cluster Secretary',
+    'cluster_coordinator': 'Community Cluster Lead',
+    'assistant_cluster_coordinator': 'Assistant Community Cluster Lead',
+    'chapter_lead': 'Chapter Lead',
+    'assistant_chapter_lead': 'Assistant Chapter Lead',
+    'chapter_coordinator': 'Chapter Lead',
+    'assistant_chapter_coordinator': 'Deputy Chapter Lead',
+    'chapter_secretary': 'Chapter Secretary',
+}
+
+WGMN_ROLE_TITLES = {
+    'chapter_lead': 'Chapter Coordinator',
+    'assistant_chapter_lead': 'Assistant Chapter Coordinator',
+}
+
+
+def get_role_title(role_code, network='WGMN'):
+    if not role_code:
+        return ''
+    if network == 'WNNN' and role_code in WNNN_ROLE_TITLES:
+        return WNNN_ROLE_TITLES[role_code]
+    if network == 'WGMN' and role_code in WGMN_ROLE_TITLES:
+        return WGMN_ROLE_TITLES[role_code]
+    try:
+        return RoleCode(role_code).label
+    except ValueError:
+        return str(role_code).replace('_', ' ').title()
 
 
 class NetworkCode(models.TextChoices):
@@ -62,8 +119,12 @@ class OrgUnit(models.Model):
     level = models.CharField(max_length=30, choices=OrgLevel.choices)
     name = models.CharField(max_length=120)
     country_iso = models.CharField(max_length=2, blank=True, default='')
+    network = models.CharField(max_length=10, choices=NetworkCode.choices, blank=True, default='')
     is_active = models.BooleanField(default=True)
     subregion = models.CharField(max_length=100, blank=True, default='')
+    level_2_name = models.CharField(max_length=80, blank=True, default='State / Region')
+    level_3_name = models.CharField(max_length=80, blank=True, default='LGA / District')
+    level_4_name = models.CharField(max_length=80, blank=True, default='Community Cluster / Ward')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -75,6 +136,14 @@ class OrgUnit(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_level_display()})"
+
+    @property
+    def code(self):
+        return f"{self.country_iso or 'WDOS'}-{str(self.id)[:4].upper()}"
+
+    @property
+    def country(self):
+        return self.country_iso or self.name
 
     def subtree_ids(self):
         """Returns all descendant unit ids including self."""
@@ -155,6 +224,12 @@ class Profile(AbstractBaseUser, PermissionsMixin):
     country = models.CharField(max_length=100, blank=True, default='')
     state_region = models.CharField(max_length=100, blank=True, default='')
     lga = models.CharField(max_length=100, blank=True, default='')
+    whatsapp = models.CharField(max_length=50, blank=True, default='')
+    volunteer_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    bio = models.TextField(blank=True, default='')
+    referral_code = models.CharField(max_length=64, blank=True, default='')
+    is_suspended = models.BooleanField(default=False)
+    engagement_stage = models.CharField(max_length=32, blank=True, default='active')
     role_applied = models.CharField(max_length=100, blank=True, default='')
     merged_into = models.UUIDField(null=True, blank=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
@@ -183,22 +258,73 @@ class Profile(AbstractBaseUser, PermissionsMixin):
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
 
+    @property
+    def state(self):
+        return self.state_region
+
+    @property
+    def city(self):
+        return self.lga
+
+    @city.setter
+    def city(self, val):
+        self.lga = val or ''
+
+    @property
+    def profession(self):
+        return self.role_applied
+
+    @profession.setter
+    def profession(self, val):
+        self.role_applied = val or ''
+
+    @property
+    def skills(self):
+        return []
+
     def get_roles(self):
         return self.roles.filter(ends_at__isnull=True).select_related('org_unit')
 
     def is_in_hq(self):
-        return bool(self.is_superuser or self.hq_function or self.roles.filter(
-            ends_at__isnull=True,
-            role__in=[RoleCode.SUPER_ADMIN, RoleCode.EXECUTIVE_DIRECTOR, RoleCode.HQ_TEAM]
-        ).exists())
+        return bool(
+            self.is_superuser
+            or self.hq_function
+            or hasattr(self, 'staff_record')
+            or self.roles.filter(
+                ends_at__isnull=True,
+                role__in=[RoleCode.SUPER_ADMIN, RoleCode.EXECUTIVE_DIRECTOR, RoleCode.HQ_TEAM]
+            ).exists()
+        )
+
+    def can_manage_unit(self, unit):
+        if self.is_in_hq():
+            return True
+        if not unit:
+            return False
+        for r in self.get_roles():
+            if r.org_unit_id and unit.id in r.org_unit.subtree_ids():
+                return True
+        return False
 
 
 class RoleAssignment(models.Model):
+    APPOINTMENT_CHOICES = [
+        ('appointed', 'Appointed'),
+        ('acting', 'Acting'),
+        ('pending', 'Pending'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='roles')
     role = models.CharField(max_length=35, choices=RoleCode.choices)
     org_unit = models.ForeignKey(OrgUnit, on_delete=models.RESTRICT, related_name='role_assignments')
     assigned_by = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_roles')
+    appointment_status = models.CharField(max_length=20, choices=APPOINTMENT_CHOICES, default='appointed')
+    reason = models.TextField(blank=True, default='')
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    declined_at = models.DateTimeField(null=True, blank=True)
+    decline_reason = models.TextField(blank=True, default='')
+    founder_welcome_seen_at = models.DateTimeField(null=True, blank=True)
     starts_at = models.DateTimeField(default=timezone.now)
     ends_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -211,6 +337,11 @@ class RoleAssignment(models.Model):
 
     def __str__(self):
         return f"{self.profile.full_name} -> {self.get_role_display()} at {self.org_unit.name}"
+
+    @property
+    def network_title(self):
+        net = self.org_unit.network or self.profile.network or 'WGMN'
+        return get_role_title(self.role, net)
 
 
 class AuditLog(models.Model):
@@ -230,8 +361,33 @@ class AuditLog(models.Model):
         verbose_name = 'Audit Log Entry'
         verbose_name_plural = 'Audit Log'
 
+    def __init__(self, *args, **kwargs):
+        if 'entity_type' in kwargs:
+            kwargs.setdefault('table_name', kwargs.pop('entity_type'))
+        if 'entity_id' in kwargs:
+            kwargs.setdefault('record_id', kwargs.pop('entity_id'))
+        if 'summary' in kwargs:
+            kwargs.setdefault('reason', kwargs.pop('summary'))
+        super().__init__(*args, **kwargs)
+
     def __str__(self):
         return f"{self.action} on {self.table_name} [{self.record_id}] at {self.occurred_at.strftime('%Y-%m-%d %H:%M')}"
+
+    @property
+    def created_at(self):
+        return self.occurred_at
+
+    @property
+    def entity_type(self):
+        return self.table_name
+
+    @property
+    def entity_id(self):
+        return self.record_id
+
+    @property
+    def summary(self):
+        return self.reason
 
 
 class OrgSetting(models.Model):

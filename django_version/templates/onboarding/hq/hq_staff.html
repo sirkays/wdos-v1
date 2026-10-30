@@ -1,0 +1,156 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">HQ Secretariat · Staff Operations &amp; Work Reports</span>
+  <h1>HQ Staff Operations &amp; Weekly Reports</h1>
+  <p>Submit weekly or daily HQ work reports, review staff submissions across Secretariat departments, and maintain the HQ staff roster.</p>
+</div>
+
+<div class="wdos-grid-2">
+  <!-- Submit Staff Work Report -->
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Submit HQ Staff Work Report</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="submit_staff_report">
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Reporting Period</label>
+          <select name="period" class="wdos-select">
+            <option value="weekly">Weekly Work Report</option>
+            <option value="daily">Daily Standup Log</option>
+            <option value="monthly">Monthly Summary</option>
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Report Date</label>
+          <input type="date" name="report_date" class="wdos-input">
+        </div>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Tasks &amp; Deliverables Completed</label>
+        <textarea name="tasks_completed" class="wdos-textarea" placeholder="Key deliverables completed this period..." required></textarea>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Tasks In Progress &amp; Next Priorities</label>
+        <textarea name="tasks_in_progress" class="wdos-textarea" placeholder="Ongoing items and next week's priorities..."></textarea>
+      </div>
+      <div class="wdos-grid-2">
+        <div class="wdos-field">
+          <label class="wdos-label">Challenges / Blockers</label>
+          <input type="text" name="challenges" class="wdos-input" placeholder="Any blockers encountered">
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Support Required from HOFCO</label>
+          <input type="text" name="support_required" class="wdos-input" placeholder="Decisions or resources needed">
+        </div>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Submit Staff Report</button>
+    </form>
+  </div>
+
+  <!-- Add Staff to Department Roster -->
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">HQ Secretariat Staff Roster ({{ staff_roster|length }})</h2>
+    {% if request.user.is_in_hq %}
+    <form method="post" style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid #e2e8f0;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_staff">
+      <div class="wdos-grid-3">
+        <div class="wdos-field">
+          <label class="wdos-label">Person</label>
+          <select name="profile_id" class="wdos-select">
+            {% for p in all_profiles %}
+            <option value="{{ p.id }}">{{ p.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Department</label>
+          <select name="department_id" class="wdos-select">
+            {% for d in departments %}
+            <option value="{{ d.id }}">{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="wdos-field">
+          <label class="wdos-label">Position Title</label>
+          <input type="text" name="position_title" class="wdos-input" placeholder="e.g. Operations Officer" required>
+        </div>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">Assign to Secretariat Roster</button>
+    </form>
+    {% endif %}
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Staff Member</th><th>Department</th><th>Title</th></tr></thead>
+        <tbody>
+          {% for s in staff_roster %}
+          <tr>
+            <td><strong>{{ s.profile.full_name }}</strong><div style="font-size:11px; color:#64748b;">{{ s.profile.email }}</div></td>
+            <td>{{ s.department.name }}</td>
+            <td>{{ s.position_title }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="wdos-empty">No staff assigned to departments yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Manager Review Queue -->
+<div class="wdos-card">
+  <div class="wdos-card-head">
+    <h2 class="wdos-card-title">Staff Work Report Review Queue</h2>
+  </div>
+  <div class="wdos-table-wrap">
+    <table class="wdos-table">
+      <thead>
+        <tr>
+          <th>Date &amp; Period</th>
+          <th>Staff Member</th>
+          <th>Completed Deliverables</th>
+          <th>Challenges / Support</th>
+          <th>Status</th>
+          <th>Manager Review</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rep in review_queue %}
+        <tr>
+          <td><strong>{{ rep.report_date }}</strong><div style="font-size:11.5px; color:#64748b;">{{ rep.period }}</div></td>
+          <td>{{ rep.author.full_name }}</td>
+          <td style="max-width:300px;">{{ rep.tasks_completed }}</td>
+          <td style="max-width:220px;">{{ rep.challenges|default:"None" }}</td>
+          <td>
+            <span class="wdos-badge {% if rep.status == 'approved' %}wdos-badge-green{% elif rep.status == 'returned' %}wdos-badge-amber{% else %}wdos-badge-slate{% endif %}">
+              {{ rep.status }}
+            </span>
+          </td>
+          <td>
+            {% if request.user.is_in_hq %}
+            <form method="post" style="display:flex; gap:4px; align-items:center;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="review_staff_report">
+              <input type="hidden" name="report_id" value="{{ rep.id }}">
+              <select name="decision" class="wdos-select" style="width:110px; padding:4px 6px; font-size:12px;">
+                <option value="approved">Approve</option>
+                <option value="returned">Return</option>
+              </select>
+              <input type="text" name="reviewer_note" value="{{ rep.reviewer_note }}" class="wdos-input" placeholder="Note..." style="width:120px; padding:4px 6px; font-size:12px;">
+              <button type="submit" class="wdos-btn wdos-btn-outline wdos-btn-sm">Save</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="wdos-empty">No staff work reports submitted yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

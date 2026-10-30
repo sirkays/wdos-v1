@@ -1,0 +1,100 @@
+{% load static %}<!doctype html>
+<html lang="{{ lang|default:'en' }}" dir="{{ direction|default:'ltr' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}{{ page_title|default:"Workspace" }}{% endblock %} — WDOS</title>
+  <link rel="stylesheet" href="{% static 'accounts/design.css' %}">
+  <link rel="stylesheet" href="{% static 'accounts/refinements.css' %}">
+  <link rel="stylesheet" href="{% static 'accounts/onboarding.css' %}">
+  {% include '_tailwind.html' %}
+  <style>
+    .ws-tiles,.wdos-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:14px;margin:16px 0}
+    .ws-tile,.wdos-kpi{border:1px solid #e2e8f0;border-radius:14px;background:#fff;padding:16px 18px;box-shadow:0 2px 10px rgba(15,23,42,.03);text-decoration:none;color:inherit;display:block;transition:border-color .15s,box-shadow .15s}
+    a.ws-tile:hover{border-color:#d4006a;box-shadow:0 4px 14px rgba(212,0,106,.08)}
+    .ws-tile b,.wdos-kpi .num{display:block;font-size:26px;color:#064e3b;font-weight:800;line-height:1.15}
+    .ws-tile.lemon b{color:#5e8d0f}
+    .ws-tile.navy b{color:#0f172a}
+    .ws-tile span,.wdos-kpi .lbl{display:block;font-size:12.5px;color:#475569;font-weight:600;margin-top:4px}
+    .ws-tile small{display:block;font-size:11px;color:#64748b;margin-top:2px}
+    .ws-list{list-style:none;margin:0;padding:0}
+    .ws-list li{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f1f5f9;font-size:13px;flex-wrap:wrap}
+    .ws-list li:last-child{border-bottom:0}
+    .ws-empty,.wdos-empty{color:#64748b;font-size:13px;padding:14px 0;text-align:center}
+    .panel,.wdos-card{border-radius:16px;border:1px solid #e2e8f0;background:#fff;padding:22px;box-shadow:0 1px 4px rgba(15,23,42,.03);margin-bottom:18px}
+    .panelhead,.wdos-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #f1f5f9;padding-bottom:12px;margin-bottom:14px;flex-wrap:wrap}
+    .panelhead h2,.panelhead h3,.wdos-card-title{font-size:15px;font-weight:800;color:#0f172a;margin:0}
+    .wdos-card-sub{font-size:12.5px;color:#64748b;margin-top:2px}
+    .wdos-hero{background:linear-gradient(135deg,#064e3b 0%,#0f172a 100%);color:#fff;border-radius:16px;padding:24px 28px;margin-bottom:20px}
+    .wdos-hero h1{font-size:24px;font-weight:800;margin:4px 0 6px;color:#fff}
+    .wdos-hero p{font-size:13.5px;color:#cbd5e1;margin:0}
+    .wdos-kicker{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#fbbf24;display:block}
+    .chip,.wdos-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:99px;background:#fff0f6;color:#d4006a;font-size:11.5px;font-weight:700}
+    .chip.grey,.wdos-badge-slate{background:#f1f5f9;color:#475569}
+    .chip.green,.wdos-badge-green,.wdos-badge-wgmn{background:#ecfdf5;color:#065f46}
+    .chip.amber,.wdos-badge-amber{background:#fef3c7;color:#92400e}
+    .chip.red,.wdos-badge-red{background:#ffe4e6;color:#be123c}
+    .chip.blue,.wdos-badge-blue,.wdos-badge-wnnn{background:#e0f2fe;color:#0369a1}
+    .mform .field,.wdos-field{margin-bottom:14px}
+    .mform label,.wdos-label{display:block;font-weight:600;font-size:12.5px;color:#334155;margin-bottom:5px}
+    .mform input[type=text],.mform input[type=email],.mform input[type=password],.mform input[type=date],.mform input[type=datetime-local],.mform input[type=number],.mform input[type=url],.mform select,.mform textarea,.wdos-input,.wdos-select,.wdos-textarea{width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;font-size:13px;box-sizing:border-box;background:#fff}
+    .wdos-textarea{min-height:90px}
+    .tabs-bar,.wdos-tabs,.wdos-filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;border-bottom:1px solid #e2e8f0;padding-bottom:10px;align-items:center}
+    .tab-pill,.wdos-tab{padding:7px 14px;border-radius:99px;font-size:12.5px;font-weight:700;text-decoration:none;color:#475569;background:#f1f5f9;transition:all .15s}
+    .tab-pill.active,.wdos-tab.active{background:#064e3b;color:#fff}
+    .data-table,.wdos-table{width:100%;border-collapse:collapse;font-size:13px}
+    .data-table th,.wdos-table th{text-align:left;padding:10px 12px;border-bottom:2px solid #e2e8f0;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;font-weight:750}
+    .data-table td,.wdos-table td{padding:11px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+    .wdos-table-wrap{overflow-x:auto}
+    .btn-sm,.wdos-btn{padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid #cbd5e1;background:#fff;color:#1e293b}
+    .btn-sm.primary,.wdos-btn-primary{background:#064e3b;border-color:#064e3b;color:#fff}
+    .btn-sm.lemon,.wdos-btn-gold{background:#d97706;border-color:#d97706;color:#fff}
+    .btn-sm.danger,.wdos-btn-danger{background:#be123c;border-color:#be123c;color:#fff}
+    .wdos-btn-ghost{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.25);color:#fff}
+    .wdos-btn-sm{padding:5px 10px;font-size:12px}
+    .wdos-grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:16px}
+    .wdos-grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:16px}
+    .wdos-alert{padding:12px 16px;border-radius:10px;font-size:13px;margin-bottom:14px;border:1px solid #e2e8f0}
+    .wdos-alert-success{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+    .wdos-alert-warning{background:#fffbeb;border-color:#fde68a;color:#92400e}
+    .wdos-alert-info{background:#f0f9ff;border-color:#bae6fd;color:#0369a1}
+    .viewas-banner{background:#1e1822;color:#fff;padding:10px 16px;border-radius:12px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;font-weight:600}
+    .progress-track{height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden}
+    .progress-fill{height:100%;background:linear-gradient(90deg,#d4006a,#7cb518);border-radius:99px}
+  </style>
+  {% include 'onboarding/_sidebar_css.html' %}
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+  {% include 'onboarding/_sidebar.html' with tab=tab|default:'dashboard' locked=locked|default:False %}
+  <main class="main">
+    <div class="topbar">
+      <div class="breadcrumb">
+        <a href="{% url 'onboarding:dashboard' %}" class="text-slate-500 hover:text-woddi-600 font-semibold no-underline">Workspace</a>
+        <span> / </span>
+        <span>{{ page_title|default:"Dashboard" }}</span>
+      </div>
+    </div>
+    <div class="content">
+      {% if view_as_target %}
+      <div class="viewas-banner">
+        <span>Viewing Read-Only as <strong>{{ view_as_target.full_name }}</strong> ({{ view_as_target.email }} · {{ view_as_target.network }})</span>
+        <a href="{% url 'onboarding:accounts_manage' %}" class="btn-sm">Back to Accounts</a>
+      </div>
+      {% endif %}
+
+      {% if messages %}
+      {% for msg in messages %}
+      <div class="mb-4 rounded-xl border {% if msg.tags == 'error' %}border-rose-200 bg-rose-50 text-rose-800{% else %}border-emerald-200 bg-emerald-50 text-emerald-900{% endif %} px-4 py-3 text-sm font-semibold" role="status">
+        {{ msg }}
+      </div>
+      {% endfor %}
+      {% endif %}
+
+      {% block workspace_body %}{% endblock %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

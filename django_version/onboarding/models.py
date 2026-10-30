@@ -16,3 +16,7 @@ class OnboardingProgress(models.Model):
         unique_together = ('profile', 'step_code')
         verbose_name = 'Onboarding Progress'
         verbose_name_plural = 'Onboarding Progress Records'
+
+
+# Alias for backward compatibility across modules
+LeaderOnboardingStep = OnboardingProgress

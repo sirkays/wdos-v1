@@ -1,0 +1,74 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Governance &amp; Structure · WGMN &amp; WNNN</span>
+  <h1>Leadership Structure &amp; Seats Register</h1>
+  <p>View filled leadership seats across WGMN and WNNN alongside vacant organisational units requiring appointment.</p>
+  <div style="margin-top:12px; display:flex; gap:8px;">
+    <a href="?net=all" class="wdos-btn wdos-btn-sm {% if net == 'all' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">All Networks</a>
+    <a href="?net=WGMN" class="wdos-btn wdos-btn-sm {% if net == 'WGMN' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">WGMN (Women 30+)</a>
+    <a href="?net=WNNN" class="wdos-btn wdos-btn-sm {% if net == 'WNNN' %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">WNNN (Nurture 18–29)</a>
+  </div>
+</div>
+
+<form method="get" class="wdos-filter-bar">
+  <input type="hidden" name="net" value="{{ net }}">
+  <input type="text" name="q" value="{{ q }}" class="wdos-input" placeholder="Search leader or unit..." style="width:220px;">
+  <input type="text" name="country" value="{{ country_f }}" class="wdos-input" placeholder="Country..." style="width:160px;">
+  <select name="level" class="wdos-select" style="width:180px;">
+    <option value="">All Governance Levels</option>
+    {% for code, label in levels %}
+    <option value="{{ code }}" {% if level_f == code %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Filter</button>
+</form>
+
+<div class="wdos-grid-2">
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Filled Leadership Seats ({{ seats|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Holder</th><th>Network</th><th>Official Role Title</th><th>Unit &amp; Level</th></tr></thead>
+        <tbody>
+          {% for s in seats %}
+          <tr>
+            <td><a href="{% url 'onboarding:member_detail' s.profile.id %}"><strong>{{ s.profile.full_name }}</strong></a></td>
+            <td><span class="wdos-badge {% if s.profile.network == 'WGMN' %}wdos-badge-wgmn{% else %}wdos-badge-wnnn{% endif %}">{{ s.profile.network }}</span></td>
+            <td>{{ s.network_title }}</td>
+            <td>
+              <a href="{% url 'onboarding:organisation_unit' s.org_unit.id %}">{{ s.org_unit.name }}</a>
+              <div style="font-size:11px; color:#64748b;">{{ s.org_unit.get_level_display }}</div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="wdos-empty">No filled seats match your filter.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Vacant Organisational Units ({{ vacant_units|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Unit Name</th><th>Level</th><th>Country</th><th>Appoint</th></tr></thead>
+        <tbody>
+          {% for u in vacant_units %}
+          <tr>
+            <td><strong>{{ u.name }}</strong></td>
+            <td>{{ u.get_level_display }}</td>
+            <td>{{ u.country }}</td>
+            <td><a href="{% url 'onboarding:organisation_unit' u.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Fill Seat →</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="wdos-empty">All active units have seated leaders!</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

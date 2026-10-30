@@ -1,0 +1,56 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">People &amp; Membership Directory</span>
+  <h1>Members, Volunteers &amp; Leaders Register</h1>
+  <p>Search and filter WODDI members, volunteers, and seated leaders across WGMN and WNNN.</p>
+</div>
+
+<form method="get" class="wdos-filter-bar">
+  <input type="text" name="q" value="{{ q }}" class="wdos-input" placeholder="Search name, email, WODDI ID..." style="width:240px;">
+  <select name="net" class="wdos-select" style="width:140px;">
+    <option value="">All Networks</option>
+    <option value="WGMN" {% if net == 'WGMN' %}selected{% endif %}>WGMN</option>
+    <option value="WNNN" {% if net == 'WNNN' %}selected{% endif %}>WNNN</option>
+  </select>
+  <select name="status" class="wdos-select" style="width:160px;">
+    <option value="">All Statuses</option>
+    {% for code, label in statuses %}
+    <option value="{{ code }}" {% if st == code %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="country" value="{{ country }}" class="wdos-input" placeholder="Country..." style="width:160px;">
+  <button type="submit" class="wdos-btn wdos-btn-primary wdos-btn-sm">Filter</button>
+</form>
+
+<div class="wdos-card">
+  <div class="wdos-card-head">
+    <h2 class="wdos-card-title">Directory ({{ members_list|length }})</h2>
+  </div>
+  <div class="wdos-table-wrap">
+    <table class="wdos-table">
+      <thead>
+        <tr><th>Person &amp; ID</th><th>Network</th><th>Country &amp; Unit</th><th>Status</th><th>360° Record</th></tr>
+      </thead>
+      <tbody>
+        {% for m in members_list %}
+        <tr>
+          <td>
+            <strong>{{ m.full_name }}</strong>
+            <div style="font-size:11.5px; color:#64748b;">{{ m.email }}</div>
+            {% if m.membership_no %}<code style="font-size:11px;">{{ m.membership_no }}</code>{% endif %}
+          </td>
+          <td><span class="wdos-badge {% if m.network == 'WGMN' %}wdos-badge-wgmn{% else %}wdos-badge-wnnn{% endif %}">{{ m.network }}</span></td>
+          <td>{{ m.country }} · {{ m.org_unit.name|default:"—" }}</td>
+          <td><span class="wdos-badge wdos-badge-slate">{{ m.get_status_display }}</span></td>
+          <td><a href="{% url 'onboarding:member_detail' m.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Open 360° Record →</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="wdos-empty">No members match your filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

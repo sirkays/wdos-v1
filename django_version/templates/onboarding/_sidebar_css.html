@@ -1,19 +1,32 @@
 <style>
-/* Sidebar polish for the onboarding / activation shells (icons, spacing, sign-out). */
-.sidebar .brand-link{margin:0 4px 8px}
-.sidebar .nav-label{font-size:10px;letter-spacing:1.5px;font-weight:750;color:#6b5f70;text-transform:uppercase;margin:22px 12px 8px}
-.sidebar .navitem{display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;margin:2px 0;padding:10px 12px;border:0;border-radius:10px;background:transparent;color:#524956;font:inherit;font-size:13px;font-weight:550;text-align:start;text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
+/* Sidebar polish for the onboarding / activation / workspace shells (icons, spacing, collapsible role groups, sign-out). */
+.sidebar{overflow-y:auto;max-height:100vh}
+.sidebar .brand-link{margin:0 4px 8px;display:block}
+.sidebar .role-pill{margin:4px 8px 10px;padding:8px 10px;border-radius:10px;background:#fbf2f6;border:1px solid #f3dce7;font-size:11px;line-height:1.35;color:#524956}
+.sidebar .role-pill strong{display:block;font-size:12px;color:#b00057;font-weight:750}
+.sidebar .hq-switcher{margin:4px 8px 10px}
+.sidebar .hq-switcher select{width:100%;padding:6px 8px;border-radius:8px;border:1px solid #dfd9e2;background:#fff;font-size:11.5px;font-weight:600;color:#1e1822}
+.sidebar .nav-label{font-size:10px;letter-spacing:1.5px;font-weight:750;color:#6b5f70;text-transform:uppercase;margin:18px 12px 6px}
+.sidebar .navitem{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;margin:2px 0;padding:8px 12px;border:0;border-radius:10px;background:transparent;color:#524956;font:inherit;font-size:12.5px;font-weight:550;text-align:start;text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
 .sidebar .navitem:hover{background:#f6f2f7;color:#1e1822}
 .sidebar .navitem.active{background:#fbf2f6;color:#b00057;font-weight:700;box-shadow:inset 3px 0 0 #d4006a}
 [dir=rtl] .sidebar .navitem.active{box-shadow:inset -3px 0 0 #d4006a}
-.sidebar .navitem .nav-svg{flex:0 0 18px;width:18px;height:18px;opacity:.85}
+.sidebar .navitem .nav-svg{flex:0 0 17px;width:17px;height:17px;opacity:.85}
 .sidebar .navitem.active .nav-svg{opacity:1}
 .sidebar .navitem.locked-nav{color:#8a7f8e;cursor:not-allowed}
 .sidebar .navitem.locked-nav:hover{background:transparent;color:#8a7f8e}
 .sidebar .navitem.locked-nav .nav-lock{margin-inline-start:auto;width:14px;height:14px;opacity:.7}
-.sidebar .sidebottom{margin-top:auto;padding-top:20px;border-top:1px solid #f0eaf1}
+.sidebar details.sb-group{margin:3px 4px;border-radius:10px}
+.sidebar details.sb-group > summary{list-style:none;cursor:pointer;padding:7px 10px;font-size:11px;font-weight:750;letter-spacing:.4px;color:#413846;border-radius:8px;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.sidebar details.sb-group > summary::-webkit-details-marker{display:none}
+.sidebar details.sb-group > summary:hover{background:#f6f2f7;color:#b00057}
+.sidebar details.sb-group > summary::after{content:'▸';font-size:11px;color:#8a7f8e;transition:transform .15s}
+.sidebar details.sb-group[open] > summary::after{transform:rotate(90deg);color:#b00057}
+.sidebar .sb-sub{padding:2px 0 6px 8px;border-inline-start:2px solid #f0e8f2;margin-inline-start:12px}
+.sidebar .sb-sub .navitem{padding:6px 10px;font-size:12px}
+.sidebar .sidebottom{margin-top:auto;padding-top:16px;border-top:1px solid #f0eaf1}
 .sidebar .sidebottom form{margin:0}
-.sidebar .sign-out-btn{margin-top:2px;padding:10px 12px;border-top:0;border-radius:10px;font-size:13px;font-weight:600;color:#9b164b}
+.sidebar .sign-out-btn{margin-top:2px;padding:9px 12px;border-top:0;border-radius:10px;font-size:12.5px;font-weight:600;color:#9b164b}
 .sidebar .sign-out-btn:hover{background:#fff0f3;color:#9b164b}
 .sidebar .navitem:focus-visible{outline:3px solid #7cb518;outline-offset:2px}
 </style>

@@ -14,6 +14,7 @@ class Priority(models.TextChoices):
 class TaskStatus(models.TextChoices):
     PENDING = 'pending', 'Pending'
     IN_PROGRESS = 'in_progress', 'In Progress'
+    AWAITING_REVIEW = 'awaiting_review', 'Awaiting Review'
     COMPLETED = 'completed', 'Completed'
     BLOCKED = 'blocked', 'Blocked'
     CANCELLED = 'cancelled', 'Cancelled'
@@ -29,6 +30,11 @@ class Task(models.Model):
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.NORMAL)
     status = models.CharField(max_length=20, choices=TaskStatus.choices, default=TaskStatus.PENDING)
     requires_approval = models.BooleanField(default=False)
+    require_response = models.BooleanField(default=False)
+    require_evidence = models.BooleanField(default=False)
+    require_document = models.BooleanField(default=False)
+    batch_id = models.CharField(max_length=64, blank=True, default='')
+    batch_label = models.CharField(max_length=200, blank=True, default='')
     due_on = models.DateField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -164,6 +170,7 @@ class Announcement(models.Model):
     body = models.TextField()
     org_unit = models.ForeignKey(OrgUnit, on_delete=models.RESTRICT, related_name='announcements')
     network = models.CharField(max_length=10, blank=True, default='')
+    audience = models.CharField(max_length=30, blank=True, default='all')
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.NORMAL)
     author = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True, related_name='authored_announcements')
     created_at = models.DateTimeField(default=timezone.now)
@@ -177,6 +184,10 @@ class Announcement(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def is_pinned(self):
+        return self.priority in (Priority.HIGH, Priority.URGENT)
 
 
 class AnnouncementRead(models.Model):
@@ -204,6 +215,14 @@ class Programme(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.code})"
+
+    @property
+    def pillar(self):
+        return self.network or 'Women & Youth Empowerment'
+
+    @property
+    def status(self):
+        return 'active' if self.is_active else 'inactive'
 
 
 class ProgrammeEvent(models.Model):
@@ -258,12 +277,25 @@ class CaseFile(models.Model):
     subject = models.CharField(max_length=255)
     details = models.TextField()
     reporter = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True, related_name='reported_cases')
-    status = models.CharField(max_length=20, default='open')
+    handler = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True, related_name='handled_cases')
+    status = models.CharField(max_length=20, default='submitted')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'cases'
+
+    @property
+    def title(self):
+        return self.subject
+
+    @property
+    def description(self):
+        return self.details
+
+    @property
+    def severity(self):
+        return 'high'
 
 
 class CaseUpdate(models.Model):
@@ -295,6 +327,14 @@ class HelpdeskTicket(models.Model):
     class Meta:
         db_table = 'tickets'
 
+    @property
+    def description(self):
+        return self.details
+
+    @property
+    def replies(self):
+        return self.messages
+
 
 class TicketMessage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -311,8 +351,10 @@ class StaffMessage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     sender = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='sent_staff_messages')
     recipient = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='received_staff_messages')
+    subject = models.CharField(max_length=200, blank=True, default='')
     body = models.TextField()
     attachment_path = models.CharField(max_length=500, blank=True, default='')
+    batch_id = models.CharField(max_length=64, blank=True, default='')
     read_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
 
@@ -346,10 +388,15 @@ class DocumentFolder(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=150)
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders')
+    org_unit = models.ForeignKey(OrgUnit, on_delete=models.SET_NULL, null=True, blank=True, related_name='doc_folders')
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         db_table = 'doc_folders'
+
+    @property
+    def files(self):
+        return self.documents
 
 
 class Document(models.Model):
@@ -416,6 +463,7 @@ class ActivationResponse(models.Model):
 
 class ReportTemplate(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=64, blank=True, default='')
     title = models.CharField(max_length=200)
     category = models.CharField(max_length=50)
     description = models.TextField(blank=True, default='')
@@ -423,6 +471,66 @@ class ReportTemplate(models.Model):
 
     class Meta:
         db_table = 'report_templates'
+
+    @property
+    def frequency(self):
+        return self.category or 'monthly'
+
+
+class LeaderReport(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    template = models.ForeignKey(ReportTemplate, on_delete=models.CASCADE, related_name='leader_reports')
+    org_unit = models.ForeignKey(OrgUnit, on_delete=models.CASCADE, related_name='leader_reports')
+    author = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='submitted_leader_reports')
+    period = models.CharField(max_length=40, default='2026-10')
+    version = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=30, default='draft')
+    is_nil = models.BooleanField(default=False)
+    nil_reason = models.TextField(blank=True, default='')
+    data = models.JSONField(default=dict, blank=True)
+    snapshot = models.JSONField(default=dict, blank=True)
+    contributions = models.JSONField(default=list, blank=True)
+    evidence_links = models.JSONField(default=list, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_leader_reports')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_note = models.TextField(blank=True, default='')
+    due_on = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'leader_reports'
+        ordering = ['-created_at']
+
+    @property
+    def title(self):
+        if isinstance(self.data, dict) and self.data.get('title'):
+            return self.data['title']
+        return self.template.title if self.template_id else 'Leadership Report'
+
+    @property
+    def period_label(self):
+        return self.period
+
+    @property
+    def is_nil_report(self):
+        return self.is_nil
+
+    @property
+    def payload(self):
+        return self.data or {}
+
+    @property
+    def reviewer_note(self):
+        return self.review_note
+
+    @property
+    def network(self):
+        return self.author.network if self.author_id else 'WGMN'
+
+    def get_status_display(self):
+        return (self.status or 'draft').replace('_', ' ').title()
 
 
 class ActivityRecord(models.Model):
@@ -433,35 +541,69 @@ class ActivityRecord(models.Model):
     description = models.TextField()
     activity_date = models.DateField()
     attendees_count = models.PositiveIntegerField(default=0)
+    people_category = models.CharField(max_length=80, blank=True, default='')
+    result = models.TextField(blank=True, default='')
+    followup_action = models.TextField(blank=True, default='')
+    followup_due = models.DateField(null=True, blank=True)
+    evidence_ref = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         db_table = 'activity_records'
         ordering = ['-activity_date']
 
+    @property
+    def title(self):
+        return self.description[:80] if self.description else self.activity_type
+
+    @property
+    def category(self):
+        return self.activity_type
+
+    @property
+    def beneficiaries_reached(self):
+        return self.attendees_count
+
+    @property
+    def status(self):
+        return 'logged'
+
 
 class Issue(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     org_unit = models.ForeignKey(OrgUnit, on_delete=models.RESTRICT, related_name='issues')
     reported_by = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='reported_issues')
+    category = models.CharField(max_length=60, blank=True, default='Operational')
+    severity = models.CharField(max_length=20, blank=True, default='amber')
+    escalation_route = models.CharField(max_length=40, blank=True, default='supervisor')
     title = models.CharField(max_length=255)
     description = models.TextField()
+    action_taken = models.TextField(blank=True, default='')
     status = models.CharField(max_length=20, default='open')
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.NORMAL)
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         db_table = 'issues'
+        ordering = ['-created_at']
 
 
 class UatFeedback(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True)
+    track = models.CharField(max_length=20, blank=True, default='A')
     page = models.CharField(max_length=150)
-    category = models.CharField(max_length=50)
+    role_tested = models.CharField(max_length=80, blank=True, default='')
+    device_browser = models.CharField(max_length=120, blank=True, default='')
+    category = models.CharField(max_length=50, default='bug')
+    severity = models.CharField(max_length=30, default='medium')
+    result = models.CharField(max_length=40, default='failed')
+    steps = models.TextField(blank=True, default='')
     comment = models.TextField()
+    expected = models.TextField(blank=True, default='')
     evidence_path = models.CharField(max_length=500, blank=True, default='')
-    status = models.CharField(max_length=20, default='submitted')
+    hq_notes = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=20, default='new')
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -470,3 +612,247 @@ class UatFeedback(models.Model):
         verbose_name = 'UAT Feedback'
         verbose_name_plural = 'UAT Feedback'
 
+    @property
+    def tester(self):
+        return self.user
+
+    @property
+    def page_route(self):
+        return self.page
+
+    @property
+    def rating(self):
+        return 5
+
+
+class MessageTemplate(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=80)
+    name = models.CharField(max_length=200)
+    category = models.CharField(max_length=40, default='membership')
+    locale = models.CharField(max_length=10, default='en')
+    subject = models.CharField(max_length=200, blank=True, default='')
+    body = models.TextField()
+    version = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=20, default='approved')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'message_templates'
+        unique_together = ('code', 'locale')
+        ordering = ['category', 'code', 'locale']
+
+    @property
+    def channel(self):
+        return self.category
+
+
+class Course(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=50, unique=True)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default='')
+    network = models.CharField(max_length=10, blank=True, default='both')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = 'courses'
+        ordering = ['code']
+
+    @property
+    def category(self):
+        return self.network.upper() if self.network else 'Leadership'
+
+    @property
+    def summary(self):
+        return self.description
+
+
+class CourseModule(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='modules')
+    seq = models.PositiveSmallIntegerField(default=1)
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+
+    class Meta:
+        db_table = 'course_modules'
+        ordering = ['course', 'seq']
+
+
+class CourseQuestion(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    module = models.ForeignKey(CourseModule, on_delete=models.CASCADE, related_name='questions')
+    seq = models.PositiveSmallIntegerField(default=1)
+    prompt = models.TextField()
+    options = models.JSONField(default=list, blank=True)
+    correct_index = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = 'course_questions'
+        ordering = ['module', 'seq']
+
+
+class CourseEnrollment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='course_enrollments')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
+    completed_modules = models.JSONField(default=list, blank=True)
+    certified_at = models.DateTimeField(null=True, blank=True)
+    cert_no = models.CharField(max_length=64, blank=True, default='')
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = 'course_enrollments'
+        unique_together = ('profile', 'course')
+
+    @property
+    def status(self):
+        return 'completed' if self.certified_at else 'in_progress'
+
+    @property
+    def quiz_score(self):
+        return 90 if self.certified_at else 0
+
+    @property
+    def completed_at(self):
+        return self.certified_at
+
+
+class EngagementItem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    kind = models.CharField(max_length=40, default='weekly_theme')
+    seq = models.PositiveSmallIntegerField(default=1)
+    title = models.CharField(max_length=200)
+    focus = models.TextField(blank=True, default='')
+    scheduled_date = models.DateField(null=True, blank=True)
+    network = models.CharField(max_length=10, blank=True, default='both')
+    status = models.CharField(max_length=20, default='scheduled')
+    evidence = models.TextField(blank=True, default='')
+    participants = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = 'engagement_items'
+        ordering = ['kind', 'seq']
+
+    @property
+    def item_type(self):
+        return self.kind
+
+    @property
+    def description(self):
+        return self.focus
+
+    @property
+    def scheduled_for(self):
+        return self.scheduled_date
+
+
+class EngagementFollowUp(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    member = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='engagement_followups')
+    opened_by = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True, related_name='opened_followups')
+    reason = models.CharField(max_length=200)
+    notes = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=20, default='open')
+    outcome = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(default=timezone.now)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'engagement_followups'
+        ordering = ['-created_at']
+
+
+class SpotlightNomination(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nominee = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='spotlight_nominations')
+    nominated_by = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True, related_name='submitted_nominations')
+    category = models.CharField(max_length=20, default='SCA')
+    citation = models.TextField()
+    evidence_summary = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=30, default='submitted')
+    score_mission = models.PositiveSmallIntegerField(default=0)
+    score_impact = models.PositiveSmallIntegerField(default=0)
+    score_consistency = models.PositiveSmallIntegerField(default=0)
+    score_character = models.PositiveSmallIntegerField(default=0)
+    score_unseen = models.PositiveSmallIntegerField(default=0)
+    total_score = models.PositiveSmallIntegerField(default=0)
+    public_consent = models.BooleanField(null=True, blank=True)
+    verified_impact_final = models.TextField(blank=True, default='')
+    hold_reason = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = 'spotlight_nominations'
+        ordering = ['-created_at']
+
+    @property
+    def network(self):
+        return self.nominee.network if self.nominee_id else 'WGMN'
+
+
+class OutreachContact(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organisation_name = models.CharField(max_length=200)
+    country = models.CharField(max_length=100, blank=True, default='')
+    contact_person = models.CharField(max_length=150, blank=True, default='')
+    email = models.EmailField()
+    phone = models.CharField(max_length=50, blank=True, default='')
+    category = models.CharField(max_length=80, blank=True, default='Partner')
+    status = models.CharField(max_length=30, default='pending')
+    needs_verification = models.BooleanField(default=False)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = 'outreach_contacts'
+        ordering = ['organisation_name']
+
+    @property
+    def stage(self):
+        return self.status
+
+
+class AutomationRule(models.Model):
+    code = models.CharField(max_length=64, primary_key=True)
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True, default='')
+    is_autopilot = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
+    threshold_days = models.PositiveIntegerField(default=14)
+    weekday = models.PositiveSmallIntegerField(default=1)
+    last_run_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'automation_rules'
+        ordering = ['code']
+
+
+class AutomationEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    rule = models.ForeignKey(AutomationRule, on_delete=models.CASCADE, related_name='events')
+    target_member = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True)
+    summary = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = 'automation_events'
+        ordering = ['-created_at']
+
+
+class MemberNotice(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    recipient = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='notices')
+    kind = models.CharField(max_length=40, default='notice')
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = 'member_notices'
+        ordering = ['-created_at']

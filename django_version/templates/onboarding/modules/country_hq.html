@@ -1,0 +1,60 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Country Secretariat &amp; National Structure</span>
+  <h1>{% if country_unit %}{{ country_unit.name }}{% else %}Continental Country Structure{% endif %}</h1>
+  <p>Inspect national leadership seats, state/regional coordinators ({{ country_unit.level_2_name|default:"States / Regions" }}), and local chapters across each country.</p>
+  <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+    {% for c in countries %}
+    <a href="{% url 'onboarding:country_iso' c.country_iso %}" class="wdos-btn wdos-btn-sm {% if country_unit and country_unit.id == c.id %}wdos-btn-gold{% else %}wdos-btn-ghost{% endif %}">
+      {{ c.country }} ({{ c.country_iso }})
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="wdos-grid-2">
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">National &amp; State Leadership Seats ({{ country_seats|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Leader</th><th>Network</th><th>Role</th><th>Unit</th></tr></thead>
+        <tbody>
+          {% for s in country_seats %}
+          <tr>
+            <td><a href="{% url 'onboarding:member_detail' s.profile.id %}"><strong>{{ s.profile.full_name }}</strong></a></td>
+            <td><span class="wdos-badge {% if s.profile.network == 'WGMN' %}wdos-badge-wgmn{% else %}wdos-badge-wnnn{% endif %}">{{ s.profile.network }}</span></td>
+            <td>{{ s.network_title }}</td>
+            <td><a href="{% url 'onboarding:organisation_unit' s.org_unit.id %}">{{ s.org_unit.name }}</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="wdos-empty">No seats assigned in this country yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="wdos-card">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">{{ country_unit.level_2_name|default:"States / Regions" }} ({{ states|length }})</h2>
+    <div class="wdos-table-wrap">
+      <table class="wdos-table">
+        <thead><tr><th>Unit Name</th><th>Code</th><th>Network</th><th>Inspect</th></tr></thead>
+        <tbody>
+          {% for st in states %}
+          <tr>
+            <td><strong>{{ st.name }}</strong></td>
+            <td><code>{{ st.code }}</code></td>
+            <td>{{ st.network }}</td>
+            <td><a href="{% url 'onboarding:organisation_unit' st.id %}" class="wdos-btn wdos-btn-outline wdos-btn-sm">Manage Unit →</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="wdos-empty">No state/region units created under this country yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

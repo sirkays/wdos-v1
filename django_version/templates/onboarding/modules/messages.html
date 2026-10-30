@@ -1,0 +1,51 @@
+{% extends "onboarding/base_workspace.html" %}
+
+{% block content %}
+<div class="wdos-hero">
+  <span class="wdos-kicker">Communications · Two-Way Messaging</span>
+  <h1>Internal Messages &amp; Directives</h1>
+  <p>Direct two-way communications between HQ Secretariat, Country Representatives, State Coordinators, and Chapter Leaders.</p>
+</div>
+
+<div class="wdos-grid-3">
+  <div class="wdos-card" style="grid-column: span 1;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Compose Message</h2>
+    <form method="post">
+      {% csrf_token %}
+      <div class="wdos-field">
+        <label class="wdos-label">Recipient</label>
+        <select name="recipient_id" class="wdos-select">
+          {% for c in contacts %}
+          <option value="{{ c.id }}">{{ c.full_name }} ({{ c.network }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Subject</label>
+        <input type="text" name="subject" class="wdos-input" required>
+      </div>
+      <div class="wdos-field">
+        <label class="wdos-label">Message</label>
+        <textarea name="body" class="wdos-textarea" required></textarea>
+      </div>
+      <button type="submit" class="wdos-btn wdos-btn-primary">Send Message</button>
+    </form>
+  </div>
+
+  <div class="wdos-card" style="grid-column: span 2;">
+    <h2 class="wdos-card-title" style="margin-bottom:10px;">Inbox ({{ inbox|length }}) &amp; Sent ({{ sent|length }})</h2>
+    {% for m in inbox %}
+    <div style="padding:10px 0; border-bottom:1px solid #e2e8f0;">
+      <div style="display:flex; justify-content:space-between; font-size:12px; color:#64748b;">
+        <span>From: <strong>{{ m.sender.full_name }}</strong></span>
+        <span>{{ m.created_at|date:"M d, H:i" }}</span>
+      </div>
+      <div style="font-weight:700; margin-top:3px;">{{ m.subject }}</div>
+      <div style="font-size:13px; color:#334155; margin-top:3px;">{{ m.body }}</div>
+    </div>
+    {% empty %}
+    <div class="wdos-empty">No incoming messages yet.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
