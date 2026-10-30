@@ -112,6 +112,13 @@ def detail_view(request, pk):
             messages.info(request, 'The host ended the meeting.')
         else:
             messages.warning(request, 'You were removed from the meeting room by the host.')
+    elif request.GET.get('elsewhere') == '1':
+        messages.warning(request, 'You left the WODDI Room here because your account joined it from another tab or device.')
+    elif request.GET.get('dropped') == '1':
+        if m.status == 'completed':
+            messages.info(request, 'The host ended the meeting.')
+        else:
+            messages.warning(request, 'Your connection to the WODDI Room was lost. Check your internet connection and join again.')
     mgr = access.is_manager(request.user, m)
     people = access.invitees(m).order_by('last_name', 'first_name')[:300] if mgr else []
     marks = {a.profile_id: a.present for a in m.attendance_records.all()}

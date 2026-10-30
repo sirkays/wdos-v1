@@ -895,14 +895,25 @@
             scheduleLayout();
           })
           .on(L.RoomEvent.Reconnected, function () { document.dispatchEvent(new CustomEvent('wdos:lobby')); })
-          .on(L.RoomEvent.Disconnected, function () {
+          .on(L.RoomEvent.Disconnected, function (reason) {
+            var R = L.DisconnectReason || {};
+            if (window.console) console.warn('[WODDI Room] disconnected, LiveKit reason:', reason, R[reason] || '');
             setStatus('Disconnected', 'offline');
             speak.disabled = cam.disabled = true;
             if (handBtn) handBtn.disabled = true;
-            if (!leavingVoluntarily) exitRoom('removed');
+            if (leavingVoluntarily) return;
+            // Still joining: leave the page as it is so the connect error below is shown instead of a redirect.
+            if (!roomConnected) return;
+            // Only say "removed by the host" when LiveKit says so; a dropped connection or the same account joining
+            // from another tab/device is not the host's doing.
+            if (reason === R.PARTICIPANT_REMOVED) exitRoom('removed');
+            else if (reason === R.ROOM_DELETED || reason === R.ROOM_CLOSED) exitRoom('ended');
+            else if (reason === R.DUPLICATE_IDENTITY) exitRoom('elsewhere');
+            else exitRoom('dropped');
           });
       // autoSubscribe off: we pick the tracks ourselves (see wantsAudio) so nobody downloads audio they should not hear
       return room.connect(t.url, t.token, { autoSubscribe: false }).then(function () {
+        roomConnected = true;
         amMod = !!t.moderator;
         // "Join muted": the server marks my token with locked mic / camera / screen sharing; honour it before the controls are enabled.
         var mine = metaOf(room.localParticipant);
@@ -930,10 +941,11 @@
       });    }).catch(function (e) { setStatus('Could not connect: ' + (e.message || e), 'error'); });
 
   var allowAllBtn = $('mod-allow-all-btn'), muteAllBtn = $('mod-mute-all-btn'), leaveBtn = $('leave');
-  var leavingVoluntarily = false, exitedRoom = false;
+  var leavingVoluntarily = false, exitedRoom = false, roomConnected = false;
 
-  // Leave the room page for good. `why` is shown on the page we land on: 'removed' (the host removed me, or the connection
-  // was lost) or 'ended' (the host ended the meeting for everyone).
+  // Leave the room page for good. `why` is shown on the page we land on: 'removed' (the host removed me), 'ended' (the host
+  // ended the meeting for everyone), 'elsewhere' (the same account joined from another tab or device) or 'dropped'
+  // (the connection to the video service was lost).
   function exitRoom(why) {
     if (exitedRoom) return;
     exitedRoom = true;
@@ -941,7 +953,8 @@
     if (room) { try { room.disconnect(); } catch (e) {} }
     var href = (leaveBtn && leaveBtn.getAttribute('href')) || '/';
     var sep = href.indexOf('?') === -1 ? '?' : '&';
-    location.replace(href + sep + (why === 'ended' ? 'ended=1' : 'removed=1'));
+    var param = { ended: 'ended=1', elsewhere: 'elsewhere=1', dropped: 'dropped=1' }[why] || 'removed=1';
+    location.replace(href + sep + param);
   }
 
   // Moderators: "Leave" opens a choice (leave, or end the meeting for everyone). Everyone else just leaves.
