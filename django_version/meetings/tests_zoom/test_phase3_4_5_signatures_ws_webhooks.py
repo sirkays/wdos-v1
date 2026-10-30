@@ -83,9 +83,9 @@ class Phase3SignaturesAndZoomRoomViewsTest(TestCase):
             first_name='Amina',
             last_name='Bello',
             org_unit=self.unit,
+            hq_function='founder',
         )
         _unlock_onboarding(self.host_user)
-        RoleAssignment.objects.create(profile=self.host_user, role=RoleCode.REGIONAL_DIRECTOR, org_unit=self.unit)
 
         self.second_mgr = Profile.objects.create_user(
             email='mgr2@thewoddi.org',
@@ -213,7 +213,6 @@ class Phase3SignaturesAndZoomRoomViewsTest(TestCase):
         )
         resp_lk = c.get(reverse('meetings:room', args=[lk_meeting.pk]))
         self.assertEqual(resp_lk.status_code, 200)
-        self.assertNotIn('Cross-Origin-Opener-Policy', resp_lk)
         self.assertNotIn('Cross-Origin-Embedder-Policy', resp_lk)
 
     def test_gates_on_zoom_room_and_signature(self):

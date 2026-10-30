@@ -73,15 +73,48 @@ def create_view(request):
     units = _managed_units(request.user)
     if not units.exists():
         raise Http404
+    from .platform import active_provider
+    prov = active_provider()
     initial = {
         'mode': 'virtual',
-        'platform': 'woddi',
+        'platform': 'zoom' if prov == 'zoom' else 'woddi',
         'audience': 'unit',
     }
     if units.count() == 1:
         initial['org_unit'] = units.first()
     form = MeetingForm(request.POST or None, initial=initial, units=units)
     if request.method == 'POST' and form.is_valid():
+        if prov == 'zoom':
+            from django.db import transaction
+            from .models_zoom import VideoPlatformSettings
+            from .zoom.client import ZoomError
+            from .zoom.provisioning import create_zoom_meeting
+            m = form.save(commit=False)
+            m.organiser = request.user
+            m.platform = 'zoom'
+            if m.access == 'anyone':
+                m.guest_code = secrets.token_urlsafe(16)
+            if not m.location:
+                m.location = 'Zoom meeting'
+            try:
+                with transaction.atomic():
+                    m.save()
+                    create_zoom_meeting(m)
+                return redirect('meetings:detail', pk=m.pk)
+            except ZoomError as exc:
+                if VideoPlatformSettings.load().fallback_to_livekit:
+                    m.pk = None
+                    m.platform = 'woddi'
+                    if m.location == 'Zoom meeting':
+                        m.location = 'WODDI Room'
+                    m.save()
+                    messages.warning(
+                        request,
+                        'Zoom provisioning was unavailable; this meeting was scheduled in the WODDI Room (LiveKit) instead.',
+                    )
+                    return redirect('meetings:detail', pk=m.pk)
+                form.add_error(None, f'Could not provision Zoom meeting: {exc}')
+                return render(request, 'meetings/form.html', _ctx(request, form=form, active_provider=prov))
         m = form.save(commit=False)
         m.organiser = request.user
         m.platform = 'woddi'
@@ -91,7 +124,7 @@ def create_view(request):
             m.location = 'WODDI Room'
         m.save()
         return redirect('meetings:detail', pk=m.pk)
-    return render(request, 'meetings/form.html', _ctx(request, form=form))
+    return render(request, 'meetings/form.html', _ctx(request, form=form, active_provider=prov))
 
 
 def _passcode_ok(request, m):
@@ -125,6 +158,14 @@ def detail_view(request, pk):
     joined = set(m.checkins.values_list('profile_id', flat=True))
     sheet = [{'p': p, 'present': marks.get(p.pk, p.pk in joined)} for p in people]
     now = timezone.now()
+    if m.platform == 'zoom' and hasattr(m, 'zoom'):
+        from django.conf import settings as django_settings
+        from .zoom_views import zoom_open
+        is_live = zoom_open(m)
+        ws_base = getattr(django_settings, 'REALTIME_WS_URL', '')
+    else:
+        is_live = _room_open(m)
+        ws_base = ''
     return render(request, 'meetings/detail.html', _ctx(
         request, m=m, mgr=mgr, sheet=sheet, checkins=m.checkins.select_related('profile'),
         files=m.files.all(), joined_me=request.user.pk in joined,
@@ -135,7 +176,7 @@ def detail_view(request, pk):
                       if mgr and request.GET.get('draft') else m.minutes),
         has_transcript=m.transcript.exists(), usage=getattr(m, 'translation_usage', None),
         time_elapsed=bool(m.ends_at) and m.status in ('scheduled', 'in_progress') and now > m.ends_at + timezone.timedelta(minutes=30),
-        live=_room_open(m)))
+        live=is_live, ws_base=ws_base))
 
 
 @login_required
@@ -151,6 +192,15 @@ def join_view(request, pk):
         else:
             messages.error(request, 'Incorrect room passcode. Please enter the passcode provided by the host.')
             return redirect('meetings:detail', pk=pk)
+    if m.platform == 'zoom' and hasattr(m, 'zoom'):
+        from .zoom_views import record_zoom_checkin, zoom_open
+        record_zoom_checkin(m, request.user)
+        if m.status == 'scheduled' and access.is_manager(request.user, m) and zoom_open(m):
+            m.status = 'in_progress'
+            m.save(update_fields=['status', 'updated_at'])
+            from realtime.publish import send as ws_send
+            ws_send(f'mtg.{m.pk}', {'type': 'status', 'status': m.status, 'live': True})
+        return redirect('meetings:zoom_room', pk=pk)
     MeetingCheckin.objects.get_or_create(meeting=m, profile=request.user)
     # The listening language is chosen here, before entering; it cannot be changed from inside the room.
     lang = request.POST.get('lang', '')
@@ -227,6 +277,8 @@ def control_view(request, pk):
     remove someone. It is sent from the server (after checking the caller manages this meeting), and browsers only obey
     commands that come from the server, so a participant cannot forge one over the room's data channel."""
     m = _manager_only(request, pk)
+    if m.platform == 'zoom':
+        return JsonResponse({'error': 'Not available for Zoom meetings'}, status=400)
     target = request.POST.get('target', '').strip()
     if not target:
         return JsonResponse({'error': 'Choose who this is for.'}, status=400)
@@ -257,6 +309,16 @@ def end_view(request, pk):
     if m.status not in ('completed', 'cancelled'):
         m.status = 'completed'
         m.save(update_fields=['status', 'updated_at'])
+    if m.platform == 'zoom' and hasattr(m, 'zoom'):
+        from realtime.publish import send as ws_send
+        from .zoom.provisioning import end_zoom_meeting
+        end_zoom_meeting(m)
+        ws_send(f'mtg.{m.pk}', {'type': 'status', 'status': m.status, 'live': False})
+        for g in m.guests.filter(status__in=('waiting', 'admitted')):
+            ws_send(f'guest.{g.pk}', {'type': 'lobby_status', 'status': 'ended'})
+        if request.headers.get('x-requested-with') == 'fetch':
+            return JsonResponse({'ok': True})
+        return redirect(f"{redirect('meetings:detail', pk=pk).url}?ended=1")
     livekit.end_room(m)
     if request.headers.get('x-requested-with') == 'fetch':
         return JsonResponse({'ok': True})
@@ -270,6 +332,9 @@ def cancel_view(request, pk):
     if m.status == 'scheduled':
         m.status = 'cancelled'
         m.save(update_fields=['status', 'updated_at'])
+        if m.platform == 'zoom' and hasattr(m, 'zoom'):
+            from .zoom.provisioning import delete_zoom_meeting
+            delete_zoom_meeting(m)
     return redirect('meetings:detail', pk=pk)
 
 
@@ -279,6 +344,12 @@ def delete_view(request, pk):
     """Permanently delete a meeting (managers only). If the room is live, close it for everyone first."""
     m = _manager_only(request, pk)
     title = m.title
+    if m.platform == 'zoom' and hasattr(m, 'zoom'):
+        from .zoom.provisioning import delete_zoom_meeting
+        delete_zoom_meeting(m)
+        m.delete()
+        messages.success(request, f'Meeting "{title}" has been deleted.')
+        return redirect('meetings:list')
     livekit.end_room(m)
     m.delete()
     messages.success(request, f'Meeting "{title}" has been deleted.')
@@ -361,6 +432,8 @@ def room_view(request, pk):
 @login_required
 def token_view(request, pk):
     m = _get(request, pk)
+    if m.platform == 'zoom':
+        return JsonResponse({'error': 'Not available for Zoom meetings'}, status=400)
     if not _room_open(m):
         return JsonResponse({'error': 'This room is not open.'}, status=403)
     if not _passcode_ok(request, m):

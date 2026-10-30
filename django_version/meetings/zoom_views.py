@@ -7,7 +7,6 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from realtime.publish import send as ws_send
@@ -138,7 +137,6 @@ def zoom_room_view(request, pk):
 
 @login_required
 @require_POST
-@never_cache
 def zoom_signature_view(request, pk):
     if _guard(request):
         return JsonResponse({'error': 'Onboarding required.'}, status=403)
@@ -259,7 +257,6 @@ def guest_zoom_room_view(request, code):
 
 
 @require_POST
-@never_cache
 def guest_zoom_signature_view(request, code):
     m = _meeting_any(code)
     if _is_ended(m):
@@ -301,7 +298,6 @@ def guest_zoom_signature_view(request, code):
 
 @login_required
 @require_GET
-@never_cache
 def ws_ticket_view(request, pk):
     """Issue a short-lived single-use WebSocket ticket for a member or manager viewing a meeting."""
     m = _get(request, pk)
@@ -326,7 +322,6 @@ def ws_ticket_view(request, pk):
 
 
 @require_GET
-@never_cache
 def guest_ws_ticket_view(request, code):
     """Issue a short-lived single-use WebSocket ticket for a waiting/admitted guest's own session."""
     m = _meeting_any(code)

@@ -507,8 +507,24 @@
           </div>
 
           <!-- Hidden input bound to form.platform -->
-          <input type="hidden" name="platform" id="id_platform" value="woddi">
+          <input type="hidden" name="platform" id="id_platform" value="{% if active_provider == 'zoom' %}zoom{% else %}woddi{% endif %}">
 
+          {% if active_provider == 'zoom' %}
+          <div class="sc-platform-pills">
+            <div class="sc-platform-pill active" data-platform="zoom" style="cursor: default;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+              Zoom Meeting
+              <span class="badge-auto">Embedded SDK</span>
+            </div>
+          </div>
+
+          <div id="woddi-room-notice" class="sc-notice" style="display: flex;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4006a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div>
+              <strong>Embedded Zoom Room:</strong> A dedicated Zoom meeting will be automatically provisioned for this session. Attendees and guests join directly inside WDOS without needing a Zoom account.
+            </div>
+          </div>
+          {% else %}
           <div class="sc-platform-pills">
             <div class="sc-platform-pill active" data-platform="woddi" style="cursor: default;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -524,6 +540,7 @@
               <strong>Secure WODDI Room:</strong> An encrypted LiveKit room will be automatically provisioned for this meeting. Attendees can join directly from their dashboard with live attendance and interpretation.
             </div>
           </div>
+          {% endif %}
         </div>
 
         <!-- Location Field (Venue for In-Person or Hybrid) -->

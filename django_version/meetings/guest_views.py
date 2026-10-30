@@ -1,5 +1,6 @@
 """Guest access: anyone holding the private link may join a meeting set to "Anyone with the link".
 Waiting room by default; the host or a moderator admits each guest. Guests never see the workspace."""
+from django.conf import settings
 from django.core.cache import cache
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -81,7 +82,11 @@ def join_view(request, code):
                 status='admitted' if m.guest_auto_admit else 'waiting', admitted_at=now if m.guest_auto_admit else None)
             request.session[f'guest_{m.pk}'] = g.pk
             if g.status == 'waiting':
-                livekit.notify_hosts(m)
+                if m.platform == 'zoom':
+                    from realtime.publish import send as ws_send
+                    ws_send(f'mtg.{m.pk}.hosts', {'type': 'lobby', 'changed': True})
+                else:
+                    livekit.notify_hosts(m)
             return redirect('meetings:guest_wait', code=code)
     left = request.GET.get('left') == '1'
     cancelled = request.GET.get('cancelled') == '1'
@@ -98,8 +103,13 @@ def leave_view(request, code):
     if g:
         g.status = 'removed'
         g.save(update_fields=['status'])
-        livekit.remove_participant(m, g.identity)
-        livekit.notify_hosts(m)
+        if m.platform == 'zoom':
+            from realtime.publish import send as ws_send
+            ws_send(f'mtg.{m.pk}.hosts', {'type': 'expel', 'customerKey': g.identity})
+            ws_send(f'mtg.{m.pk}.hosts', {'type': 'lobby', 'changed': True})
+        else:
+            livekit.remove_participant(m, g.identity)
+            livekit.notify_hosts(m)
     if request.GET.get('removed'):
         param = 'removed=1'
     elif request.GET.get('dropped') or request.GET.get('elsewhere'):
@@ -118,6 +128,14 @@ def wait_view(request, code):
     g = _guest(request, m)
     if not g:
         return redirect('meetings:guest_join', code=code)
+    if m.platform == 'zoom' and hasattr(m, 'zoom'):
+        if g.status == 'admitted':
+            return redirect('meetings:guest_zoom_room', code=code)
+        return render(
+            request,
+            'meetings/guest_wait_zoom.html',
+            _ctx(request, m=m, g=g, ws_base=getattr(settings, 'REALTIME_WS_URL', '')),
+        )
     if g.status == 'admitted':
         return redirect('meetings:guest_room', code=code)
     return render(request, 'meetings/guest_wait.html', _ctx(request, m=m, g=g))
@@ -136,6 +154,8 @@ def room_view(request, code):
     g = _guest(request, m)
     if not g or g.status != 'admitted':
         return redirect('meetings:guest_wait', code=code)
+    if m.platform == 'zoom' and hasattr(m, 'zoom'):
+        return redirect('meetings:guest_zoom_room', code=code)
     if not _room_open(m):
         if m.ends_at and timezone.now() > m.ends_at:
             return render(request, 'meetings/guest_ended.html', _ctx(request, m=m))
@@ -148,6 +168,8 @@ def room_view(request, code):
 
 def token_view(request, code):
     m = _meeting(code)
+    if m.platform == 'zoom':
+        return JsonResponse({'error': 'Not available for Zoom meetings'}, status=400)
     g = _guest(request, m)
     if not g or g.status != 'admitted' or not _room_open(m):
         return JsonResponse({'error': 'Not allowed.'}, status=403)
@@ -159,6 +181,8 @@ def token_view(request, code):
 def lobby_token_view(request, code):
     """Token for the waiting guest's private lobby room: lets the server push 'admitted' / 'removed' instantly."""
     m = _meeting(code)
+    if m.platform == 'zoom':
+        return JsonResponse({'error': 'Not available for Zoom meetings'}, status=400)
     g = _guest(request, m)
     if not g or g.status == 'removed':
         return JsonResponse({'error': 'Not allowed.'}, status=403)
@@ -180,6 +204,24 @@ def guests_json_view(request, pk):
 def guest_action_view(request, pk, gid, action):
     m = _manager_only(request, pk)
     g = get_object_or_404(GuestSession, pk=gid, meeting=m)
+    if m.platform == 'zoom':
+        from realtime.publish import send as ws_send
+        if action == 'admit' and g.status == 'waiting':
+            g.status, g.admitted_at = 'admitted', timezone.now()
+            g.save(update_fields=['status', 'admitted_at'])
+            ws_send(f'guest.{g.pk}', {'type': 'lobby_status', 'status': 'admitted'})
+        elif action == 'remove':
+            g.status = 'removed'
+            g.save(update_fields=['status'])
+            ws_send(f'guest.{g.pk}', {'type': 'lobby_status', 'status': 'removed'})
+            ws_send(f'mtg.{m.pk}.hosts', {'type': 'expel', 'customerKey': g.identity})
+        else:
+            return JsonResponse({'error': 'Not allowed.'}, status=400)
+        ws_send(f'mtg.{m.pk}.hosts', {'type': 'lobby', 'changed': True})
+        if request.headers.get('x-requested-with') == 'fetch':
+            return JsonResponse({'ok': True})
+        return redirect('meetings:detail', pk=pk)
+
     if action == 'admit' and g.status == 'waiting':
         g.status, g.admitted_at = 'admitted', timezone.now()
         g.save(update_fields=['status', 'admitted_at'])
@@ -208,11 +250,20 @@ def guest_link_view(request, pk):
         m.access, m.guest_code = 'anyone', secrets.token_urlsafe(16)
     elif act == 'off':
         m.access, m.guest_code = 'members', ''
-        for g in m.guests.filter(status__in=('waiting', 'admitted')):
-            g.status = 'removed'
-            g.save(update_fields=['status'])
-            livekit.remove_participant(m, g.identity)
-            livekit.notify_guest(m, g, 'removed')
+        if m.platform == 'zoom':
+            from realtime.publish import send as ws_send
+            for g in m.guests.filter(status__in=('waiting', 'admitted')):
+                g.status = 'removed'
+                g.save(update_fields=['status'])
+                ws_send(f'guest.{g.pk}', {'type': 'lobby_status', 'status': 'removed'})
+                ws_send(f'mtg.{m.pk}.hosts', {'type': 'expel', 'customerKey': g.identity})
+            ws_send(f'mtg.{m.pk}.hosts', {'type': 'lobby', 'changed': True})
+        else:
+            for g in m.guests.filter(status__in=('waiting', 'admitted')):
+                g.status = 'removed'
+                g.save(update_fields=['status'])
+                livekit.remove_participant(m, g.identity)
+                livekit.notify_guest(m, g, 'removed')
     elif act in ('auto_on', 'auto_off'):
         m.guest_auto_admit = act == 'auto_on'
     elif act in ('mute_entry_on', 'mute_entry_off'):
@@ -226,6 +277,9 @@ def guest_link_view(request, pk):
     elif act == 'passcode_off':
         m.passcode = ''
     m.save()
+    if act in ('mute_entry_on', 'mute_entry_off') and m.platform == 'zoom' and hasattr(m, 'zoom'):
+        from .zoom.provisioning import update_zoom_meeting
+        update_zoom_meeting(m, mute_upon_entry=m.mute_on_entry)
     if request.headers.get('x-requested-with') == 'fetch':      # the in-room switch toggles without leaving the call
         return JsonResponse({'ok': True, 'mute_on_entry': m.mute_on_entry})
     return redirect('meetings:detail', pk=pk)

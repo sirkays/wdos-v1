@@ -39,12 +39,87 @@ class AttendanceInline(admin.TabularInline):
 
 @admin.register(Meeting)
 class MeetingAdmin(admin.ModelAdmin):
-    list_display = ('title', 'org_unit', 'organiser', 'mode', 'starts_at', 'status')
-    list_filter = ('mode', 'status', 'org_unit__level')
+    list_display = ('title', 'org_unit', 'organiser', 'mode', 'platform', 'starts_at', 'status')
+    list_filter = ('mode', 'platform', 'status', 'org_unit__level')
     search_fields = ('title', 'agenda', 'location')
     raw_id_fields = ('org_unit', 'organiser')
     inlines = [AttendanceInline]
     date_hierarchy = 'starts_at'
+    actions = ['move_to_zoom', 'move_to_livekit']
+
+    def _can_move_platform(self, request, m) -> bool:
+        from django.contrib import messages
+        from meetings.views import _room_open
+        from meetings.zoom_views import zoom_open
+
+        if m.status != 'scheduled':
+            self.message_user(
+                request,
+                f'Cannot move "{m.title}": only scheduled meetings can change provider.',
+                level=messages.ERROR,
+            )
+            return False
+        if m.starts_at and (_room_open(m) or zoom_open(m)):
+            self.message_user(
+                request,
+                f'Cannot move "{m.title}": the meeting room window has already opened.',
+                level=messages.ERROR,
+            )
+            return False
+        if m.checkins.exists():
+            self.message_user(
+                request,
+                f'Cannot move "{m.title}": participants have already checked in.',
+                level=messages.ERROR,
+            )
+            return False
+        return True
+
+    @admin.action(description='Move to Zoom')
+    def move_to_zoom(self, request, queryset):
+        from django.contrib import messages
+        from django.db import transaction
+        from meetings.zoom.client import ZoomError
+        from meetings.zoom.provisioning import create_zoom_meeting
+
+        for m in queryset:
+            if m.platform == 'zoom' and hasattr(m, 'zoom'):
+                continue
+            if not self._can_move_platform(request, m):
+                continue
+            try:
+                with transaction.atomic():
+                    m.platform = 'zoom'
+                    if not m.location or m.location == 'WODDI Room':
+                        m.location = 'Zoom meeting'
+                    m.save(update_fields=['platform', 'location', 'updated_at'])
+                    create_zoom_meeting(m)
+                self.message_user(request, f'Moved "{m.title}" to Zoom.', level=messages.SUCCESS)
+            except ZoomError as exc:
+                self.message_user(
+                    request,
+                    f'Failed to move "{m.title}" to Zoom: {exc}',
+                    level=messages.ERROR,
+                )
+
+    @admin.action(description='Move to LiveKit')
+    def move_to_livekit(self, request, queryset):
+        from django.contrib import messages
+        from meetings.zoom.provisioning import delete_zoom_meeting
+
+        for m in queryset:
+            if m.platform == 'woddi':
+                continue
+            if not self._can_move_platform(request, m):
+                continue
+            if hasattr(m, 'zoom'):
+                delete_zoom_meeting(m)
+                m.zoom.delete()
+            m.platform = 'woddi'
+            if not m.location or m.location == 'Zoom meeting':
+                m.location = 'WODDI Room'
+            m.save(update_fields=['platform', 'location', 'updated_at'])
+            self.message_user(request, f'Moved "{m.title}" to LiveKit (WODDI Room).', level=messages.SUCCESS)
 
 
 @admin.register(Announcement)

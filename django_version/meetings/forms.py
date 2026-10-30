@@ -35,8 +35,13 @@ class MeetingForm(forms.ModelForm):
         self.fields['org_unit'].required = False
         self.fields['audience'].required = False
         if 'platform' in self.fields:
-            self.fields['platform'].choices = [('woddi', 'WODDI Room')]
-            self.fields['platform'].initial = 'woddi'
+            from .platform import active_provider
+            if active_provider() == 'zoom':
+                self.fields['platform'].choices = [('zoom', 'Zoom')]
+                self.fields['platform'].initial = 'zoom'
+            else:
+                self.fields['platform'].choices = [('woddi', 'WODDI Room')]
+                self.fields['platform'].initial = 'woddi'
 
     def clean(self):
         d = super().clean()
@@ -48,7 +53,8 @@ class MeetingForm(forms.ModelForm):
         if not d.get('access'):
             d['access'] = 'members'
         if not d.get('platform'):
-            d['platform'] = 'woddi'
+            from .platform import active_provider
+            d['platform'] = 'zoom' if active_provider() == 'zoom' else 'woddi'
         if not d.get('org_unit') and self._units is not None:
             d['org_unit'] = self._units.first()
         if not d.get('org_unit'):

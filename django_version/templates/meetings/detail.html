@@ -1,4 +1,5 @@
 {% extends 'meetings/base.html' %}
+{% load static %}
 {% block crumb %} <span class="bc-sep">/</span> <span class="bc-current">{{ m.title }}</span>{% endblock %}
 {% block body %}
 <div class="max-w-6xl mx-auto space-y-6 pb-10">
@@ -16,23 +17,23 @@
           </span>
 
           {% if time_elapsed %}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-800">
+          <span id="meeting-status-pill" class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-800">
             <span class="h-2 w-2 rounded-full bg-amber-500"></span> Time Elapsed
           </span>
           {% elif live or m.status == 'in_progress' %}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800">
+          <span id="meeting-status-pill" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800">
             <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> {{ m.get_status_display }}
           </span>
           {% elif m.status == 'completed' %}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+          <span id="meeting-status-pill" class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
             {{ m.get_status_display }}
           </span>
           {% elif m.status == 'cancelled' %}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-xs font-bold text-rose-700">
+          <span id="meeting-status-pill" class="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-xs font-bold text-rose-700">
             {{ m.get_status_display }}
           </span>
           {% else %}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 border border-sky-200 px-3 py-1 text-xs font-bold text-sky-800">
+          <span id="meeting-status-pill" class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 border border-sky-200 px-3 py-1 text-xs font-bold text-sky-800">
             {{ m.get_status_display }}
           </span>
           {% endif %}
@@ -102,7 +103,7 @@
           {% endif %}
           <button class="btn primary inline-flex items-center gap-2 rounded-xl px-5 h-11 text-sm font-bold shadow-sm" type="submit">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            <span>{% if m.platform == 'woddi' %}Join WODDI Room{% else %}Open meeting link{% endif %}</span>
+            <span>{% if m.platform == 'woddi' %}Join WODDI Room{% elif m.platform == 'zoom' and m.zoom %}Join Zoom Meeting{% else %}Open meeting link{% endif %}</span>
           </button>
         </form>
         {% endif %}
@@ -194,6 +195,30 @@
 
       {% if m.platform == 'woddi' and m.status != 'completed' and m.status != 'cancelled' %}
       {% include 'meetings/_device_check.html' %}
+      {% elif m.platform == 'zoom' and m.zoom and m.status != 'completed' and m.status != 'cancelled' %}
+      <section class="panel rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-start gap-3.5">
+            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-woddi-50 text-woddi-600">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            </span>
+            <div>
+              <h2 class="text-base font-extrabold text-slate-900">Embedded Zoom Meeting Room</h2>
+              <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                This meeting runs on the embedded Zoom Meeting SDK directly inside your browser. No Zoom account or external app download is required.
+              </p>
+            </div>
+          </div>
+          {% if mgr %}
+          <form method="post" action="{% url 'meetings:end' m.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer">
+              End meeting for everyone
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </section>
       {% endif %}
 
       {% if m.agenda %}
@@ -231,11 +256,11 @@
             </span>
             <div>
               <h2 class="text-base font-extrabold text-slate-900 leading-tight">{% if m.status == 'completed' %}Meeting Minutes{% else %}Close Meeting &amp; Record Minutes{% endif %}</h2>
-              <p class="text-xs text-slate-500 mt-0.5">Review decisions and action items, or generate a draft directly from the live transcript.</p>
+              <p class="text-xs text-slate-500 mt-0.5">{% if m.platform == 'zoom' %}Review decisions and action items before closing the meeting.{% else %}Review decisions and action items, or generate a draft directly from the live transcript.{% endif %}</p>
             </div>
           </div>
 
-          {% if has_transcript %}
+          {% if has_transcript and m.platform != 'zoom' %}
           <div class="flex flex-wrap items-center gap-2">
             <a class="inline-flex items-center gap-1.5 rounded-xl border {% if draft_active %}border-woddi-300 bg-woddi-50 text-woddi-700{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-50{% endif %} px-3.5 py-2 text-xs font-bold transition shadow-2xs" href="?draft=1">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
@@ -249,14 +274,14 @@
           {% endif %}
         </div>
 
-        {% if draft_active %}
+        {% if draft_active and m.platform != 'zoom' %}
         <div class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-woddi-200 bg-woddi-50/70 px-4 py-2.5 text-xs font-semibold text-woddi-800">
           <span>Draft minutes populated from the room transcript and check-in list. Review and edit before saving.</span>
           <a href="{% url 'meetings:detail' m.pk %}" class="text-woddi-700 underline hover:no-underline shrink-0">Reset</a>
         </div>
         {% endif %}
 
-        {% if usage %}
+        {% if usage and m.platform != 'zoom' %}
         <div class="mb-4 grid grid-cols-3 gap-2.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-center">
           <div>
             <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Speech Recognised</div>
@@ -381,7 +406,40 @@
   </div>
 </div>
 {% endblock %}
-{% block scripts %}<script>
+{% block scripts %}{% if m.platform == 'zoom' and m.zoom %}<script src="{% static 'realtime/ws.js' %}"></script>
+<script>
+(function(){
+  var box=document.getElementById('joined'),c=document.getElementById('count');
+  if(window.WdosRealtime){
+    window.WdosRealtime.connect({
+      ticketUrl:"{% url 'meetings:ws_ticket' m.pk %}",
+      wsPath:"/ws/meetings/{{ m.pk }}/",
+      wsBase:"{{ ws_base|default:''|escapejs }}",
+      onEvent:function(ev){
+        if(!ev||!ev.type)return;
+        if(ev.type==='checkin'&&box&&c){
+          var empty=box.querySelector('.ws-empty');
+          if(empty)empty.remove();
+          var li=document.createElement('li'),sp=document.createElement('span'),sm=document.createElement('small');
+          sp.className='font-semibold text-sm text-slate-800';sp.textContent=ev.name||'Participant';
+          sm.className='rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600';sm.textContent=ev.at||'';
+          li.appendChild(sp);li.appendChild(sm);box.appendChild(li);
+          c.textContent=String(box.querySelectorAll('li').length);
+        } else if(ev.type==='status'&&ev.status==='completed'){
+          location.reload();
+        }
+      }
+    });
+  }
+  var openBtn=document.getElementById('open-delete-meeting-modal'),modal=document.getElementById('delete-meeting-modal'),cancelBtn=document.getElementById('cancel-delete-meeting-btn'),backdrop=document.getElementById('delete-meeting-backdrop');
+  function openDel(){if(!modal)return;modal.hidden=false;modal.classList.remove('hidden');modal.style.display='flex';}
+  function closeDel(){if(!modal)return;modal.hidden=true;modal.classList.add('hidden');modal.style.display='none';}
+  if(openBtn&&modal){openBtn.addEventListener('click',openDel);}
+  if(cancelBtn){cancelBtn.addEventListener('click',closeDel);}
+  if(backdrop){backdrop.addEventListener('click',closeDel);}
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal&&!modal.hidden)closeDel();});
+})();
+</script>{% else %}<script>
 (function(){var u="{% url 'meetings:live' m.pk %}",box=document.getElementById('joined'),c=document.getElementById('count');
 setInterval(function(){fetch(u,{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){c.textContent=d.count;
 box.innerHTML=d.people.length?d.people.map(function(p){return '<li><span class="font-semibold text-sm text-slate-800"></span><small class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">'+p.at+'</small></li>'}).join(''):'<li class="ws-empty">Nobody has joined yet.</li>';
@@ -394,4 +452,4 @@ if(cancelBtn){cancelBtn.addEventListener('click',closeDel);}
 if(backdrop){backdrop.addEventListener('click',closeDel);}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal&&!modal.hidden)closeDel();});
 })();
-</script>{% endblock %}
+</script>{% endif %}{% endblock %}
