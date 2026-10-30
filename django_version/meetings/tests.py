@@ -624,11 +624,15 @@ class InterpreterSupervisor(TestCase):
         async def fake_open_rooms(only=None):
             return dict(rooms)
 
+        async def fake_occupied(names):
+            return set(names)
+
         async def scenario():
             cmd = agent_cmd.Command()
             cmd.stdout = StringIO()
             running = {}
-            with mock.patch.object(agent_cmd, 'RoomBot', FakeBot), mock.patch.object(agent_cmd, 'open_rooms', fake_open_rooms):
+            with mock.patch.object(agent_cmd, 'RoomBot', FakeBot), mock.patch.object(agent_cmd, 'open_rooms', fake_open_rooms), \
+                    mock.patch.object(agent_cmd, 'occupied_rooms', fake_occupied):
                 await cmd.tick(running, None)
                 await asyncio.sleep(0)
                 await asyncio.sleep(0)
@@ -664,11 +668,15 @@ class InterpreterSupervisor(TestCase):
         async def fake_open_rooms(only=None):
             return {'m1': 'meeting-m1'}
 
+        async def fake_occupied(names):
+            return set(names)
+
         async def scenario():
             cmd = agent_cmd.Command()
             cmd.stdout = StringIO()
             running = {}
-            with mock.patch.object(agent_cmd, 'RoomBot', FakeBot), mock.patch.object(agent_cmd, 'open_rooms', fake_open_rooms):
+            with mock.patch.object(agent_cmd, 'RoomBot', FakeBot), mock.patch.object(agent_cmd, 'open_rooms', fake_open_rooms), \
+                    mock.patch.object(agent_cmd, 'occupied_rooms', fake_occupied):
                 await cmd.tick(running, None)
                 await asyncio.sleep(0)
                 await asyncio.sleep(0)
@@ -681,5 +689,93 @@ class InterpreterSupervisor(TestCase):
                 await cmd.tick(running, None)
                 await asyncio.sleep(0)
                 self.assertEqual(len(starts), 2)
+
+        asyncio.run(scenario())
+
+
+    def test_no_bot_in_an_empty_room_and_it_leaves_after_people_go(self):
+        """The bot uses LiveKit connection minutes: it must not sit in an open room nobody is in."""
+        import asyncio
+        from io import StringIO
+        from unittest import mock
+
+        from .management.commands import run_translation_agent as agent_cmd
+
+        starts = []
+
+        class FakeBot:
+            def __init__(self, mid, name):
+                pass
+
+            async def run(self, stop):
+                starts.append(1)
+                await stop.wait()
+
+        people = set()
+
+        async def fake_open_rooms(only=None):
+            return {'m1': 'meeting-m1'}
+
+        async def fake_occupied(names):
+            return set(people)
+
+        async def scenario():
+            cmd = agent_cmd.Command()
+            cmd.stdout = StringIO()
+            running = {}
+            with mock.patch.object(agent_cmd, 'RoomBot', FakeBot), mock.patch.object(agent_cmd, 'open_rooms', fake_open_rooms), \
+                    mock.patch.object(agent_cmd, 'occupied_rooms', fake_occupied):
+                await cmd.tick(running, None)
+                await asyncio.sleep(0)
+                self.assertEqual(starts, [])             # open but empty: no bot
+                people.add('meeting-m1')
+                await cmd.tick(running, None)
+                await asyncio.sleep(0)
+                self.assertEqual(len(starts), 1)
+                people.clear()
+                await cmd.tick(running, None)            # still within the grace period
+                self.assertIn('m1', running)
+                cmd.empty_since['m1'] -= agent_cmd.EMPTY_GRACE + 1
+                await cmd.tick(running, None)            # grace over: the bot leaves
+                self.assertEqual(running, {})
+
+        asyncio.run(scenario())
+
+    def test_quota_exceeded_backs_off_instead_of_hammering_livekit(self):
+        import asyncio
+        from io import StringIO
+        from unittest import mock
+
+        from .management.commands import run_translation_agent as agent_cmd
+
+        starts = []
+
+        class FakeBot:
+            def __init__(self, mid, name):
+                pass
+
+            async def run(self, stop):
+                starts.append(1)
+                raise ConnectionError('429 Too Many Requests - connection minutes limit exceeded.')
+
+        async def fake_open_rooms(only=None):
+            return {'m1': 'meeting-m1'}
+
+        async def fake_occupied(names):
+            return set(names)
+
+        async def scenario():
+            cmd = agent_cmd.Command()
+            cmd.stdout = StringIO()
+            running = {}
+            with mock.patch.object(agent_cmd, 'RoomBot', FakeBot), mock.patch.object(agent_cmd, 'open_rooms', fake_open_rooms), \
+                    mock.patch.object(agent_cmd, 'occupied_rooms', fake_occupied):
+                await cmd.tick(running, None)
+                await asyncio.sleep(0)
+                for _ in range(5):
+                    await cmd.tick(running, None)
+                    await asyncio.sleep(0)
+                self.assertEqual(len(starts), 1)
+                self.assertIn('connection-minutes limit exceeded', cmd.stdout.getvalue())
 
         asyncio.run(scenario())
