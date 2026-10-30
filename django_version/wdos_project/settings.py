@@ -25,6 +25,21 @@ AZURE_TRANSLATOR_REGION = os.environ.get('AZURE_TRANSLATOR_REGION', '')
 AZURE_SPEECH_KEY_2 = os.environ.get('AZURE_SPEECH_KEY_2', '')
 AZURE_TRANSLATOR_KEY_2 = os.environ.get('AZURE_TRANSLATOR_KEY_2', '')
 
+# Meetings: Zoom Meeting SDK + Server-to-Server OAuth + Realtime WebSockets
+ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID', '')
+ZOOM_S2S_CLIENT_ID = os.environ.get('ZOOM_S2S_CLIENT_ID', '')
+ZOOM_S2S_CLIENT_SECRET = os.environ.get('ZOOM_S2S_CLIENT_SECRET', '')
+ZOOM_SDK_KEY = os.environ.get('ZOOM_SDK_KEY', '')
+ZOOM_SDK_SECRET = os.environ.get('ZOOM_SDK_SECRET', '')
+ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '')
+ZOOM_FIELD_ENCRYPTION_KEY = os.environ.get('ZOOM_FIELD_ENCRYPTION_KEY', '')
+ZOOM_SDK_VERSION = os.environ.get('ZOOM_SDK_VERSION', '6.10.0')
+REDIS_URL = os.environ.get('REDIS_URL', '')
+REALTIME_WS_URL = os.environ.get('REALTIME_WS_URL', '')
+REALTIME_ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get('REALTIME_ALLOWED_ORIGINS', '').split(',') if o.strip()
+]
+
 # Security
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-wdos-2026-v85.8-platform-key-production-ready')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
@@ -54,6 +69,8 @@ INSTALLED_APPS = [
     'members.apps.MembersConfig',
     'operations.apps.OperationsConfig',
     'api.apps.ApiConfig',
+    'channels',
+    'realtime.apps.RealtimeConfig',
 ]
 
 MIDDLEWARE = [
@@ -89,6 +106,42 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'wdos_project.wsgi.application'
+ASGI_APPLICATION = 'wdos_project.asgi.application'
+
+# Cache & Channel Layers (Zoom + Realtime WebSockets)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'wdos-default',
+    },
+    'zoom': (
+        {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
+        if REDIS_URL
+        else {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'wdos-zoom',
+        }
+    ),
+}
+
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.pubsub.RedisPubSubChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # Database
 # Default: Zero-configuration SQLite.

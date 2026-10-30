@@ -65,3 +65,12 @@ class GuestSession(models.Model):
     @property
     def identity(self):
         return f'guest-{self.pk}'
+
+
+from .models_zoom import (  # noqa: F401, E402
+    VideoPlatformSettings,
+    ZoomHostAccount,
+    ZoomMeeting,
+    ZoomParticipantSession,
+    ZoomWebhookEvent,
+)
