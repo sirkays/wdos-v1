@@ -1,5 +1,6 @@
 from django.urls import path
-from . import guest_views, views
+from . import guest_views, views, zoom_views
+from .zoom.webhooks import zoom_webhook_view
 
 app_name = 'meetings'
 
@@ -32,5 +33,13 @@ urlpatterns = [
     path('workspace/meetings/<uuid:pk>/guests/', guest_views.guests_json_view, name='guests'),
     path('workspace/meetings/<uuid:pk>/guests/<int:gid>/<str:action>/', guest_views.guest_action_view, name='guest_action'),
     path('workspace/meetings/<uuid:pk>/guest-link/', guest_views.guest_link_view, name='guest_link'),
+    # Zoom Meeting SDK & Realtime WebSocket tickets + webhooks
+    path('workspace/meetings/<uuid:pk>/zoom/', zoom_views.zoom_room_view, name='zoom_room'),
+    path('workspace/meetings/<uuid:pk>/zoom/signature/', zoom_views.zoom_signature_view, name='zoom_signature'),
+    path('workspace/meetings/<uuid:pk>/ws-ticket/', zoom_views.ws_ticket_view, name='ws_ticket'),
+    path('join/<str:code>/zoom/', zoom_views.guest_zoom_room_view, name='guest_zoom_room'),
+    path('join/<str:code>/zoom/signature/', zoom_views.guest_zoom_signature_view, name='guest_zoom_signature'),
+    path('join/<str:code>/ws-ticket/', zoom_views.guest_ws_ticket_view, name='guest_ws_ticket'),
+    path('integrations/zoom/webhook/', zoom_webhook_view, name='zoom_webhook'),
 ]
 

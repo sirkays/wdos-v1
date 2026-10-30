@@ -1,9 +1,14 @@
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from accounts import views as account_views
 from accounts import views_doors
+
+
+def healthz_view(request):
+    return JsonResponse({'status': 'ok'})
 
 admin.site.site_header = "WDOS Administration"
 admin.site.site_title = "WDOS Portal"
@@ -12,6 +17,8 @@ admin.site.index_title = "WODDI Digital Operating System — Management"
 urlpatterns = [
     # Django Admin
     path('admin/', admin.site.urls),
+    path('healthz', healthz_view, name='healthz'),
+    path('healthz/', healthz_view, name='healthz_slash'),
 
     # Native Django REST APIs
     path('api/', include('api.urls')),

@@ -1,0 +1,242 @@
+{% load static %}<!doctype html>
+<html lang="{{ lang|default:'en' }}" dir="{{ direction|default:'ltr' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>{{ m.title }} — WDOS Zoom Room</title>
+  <link rel="stylesheet" href="{% static 'accounts/design.css' %}">
+  <link rel="stylesheet" href="{% static 'accounts/refinements.css' %}">
+  {% include '_tailwind.html' %}
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #0f172a;
+      color: #f8fafc;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    #zmmtg-root {
+      width: 100%;
+      height: 100%;
+    }
+    .wdos-zoom-hud {
+      position: fixed;
+      top: 12px;
+      right: 16px;
+      z-index: 2147483000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .wdos-hud-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      color: #f8fafc;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .wdos-hud-pill:hover {
+      border-color: #d4006a;
+      background: rgba(30, 41, 59, 0.95);
+    }
+    .wdos-hud-pill.danger {
+      background: rgba(190, 18, 60, 0.92);
+      border-color: rgba(251, 113, 133, 0.45);
+    }
+    .wdos-hud-pill.danger:hover {
+      background: rgba(225, 29, 72, 1);
+    }
+    .wdos-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: #d4006a;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .wdos-zoom-drawer {
+      position: fixed;
+      top: 56px;
+      right: 16px;
+      bottom: 16px;
+      width: 360px;
+      max-width: calc(100vw - 32px);
+      z-index: 2147483001;
+      background: #1e293b;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+      padding: 16px;
+      overflow-y: auto;
+      color: #f1f5f9;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    .wdos-zoom-drawer.collapsed {
+      transform: translateX(400px);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .wdos-zoom-drawer .panelhead h2 {
+      color: #f8fafc !important;
+    }
+    .wdos-zoom-drawer .rounded-xl {
+      background: rgba(15, 23, 42, 0.65) !important;
+      border-color: rgba(148, 163, 184, 0.2) !important;
+    }
+    .wdos-zoom-drawer h3, .wdos-zoom-drawer .ws-list span {
+      color: #e2e8f0 !important;
+    }
+    .wdos-zoom-toast {
+      position: fixed;
+      top: 56px;
+      right: 16px;
+      z-index: 2147483002;
+      background: #0f172a;
+      border: 1px solid #d4006a;
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+      font-size: 12px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+    .wdos-status-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2147482900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      padding: 24px;
+    }
+    .wdos-status-card {
+      max-width: 460px;
+      width: 100%;
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 20px;
+      padding: 28px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <!-- Zoom SDK Mount Point -->
+  <div id="zmmtg-root"></div>
+
+  <!-- Connection / Error Status Overlay (hidden once Zoom SDK joins) -->
+  <div id="wdos-zoom-overlay" class="wdos-status-overlay" {% if not missing %}style="display:flex;"{% endif %}>
+    <div class="wdos-status-card">
+      {% if missing %}
+      <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <h1 class="text-lg font-extrabold text-white">Zoom Service Not Configured</h1>
+      <p class="mt-2 text-xs text-slate-300 leading-relaxed">
+        The Zoom Meeting SDK credentials are not yet configured on this server.
+        {% if mgr %}Missing settings: {{ missing|join:", " }}{% endif %}
+      </p>
+      <div class="mt-5">
+        <a href="{{ leave_url }}" class="wdos-hud-pill">Return to Meeting Details</a>
+      </div>
+      {% else %}
+      <div id="wdos-zoom-spinner" class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-pink-600/20 text-pink-400">
+        <svg class="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      </div>
+      <h1 id="wdos-zoom-status-title" class="text-lg font-extrabold text-white">Connecting to {{ m.title }}…</h1>
+      <p id="wdos-zoom-status-msg" class="mt-2 text-xs text-slate-300 leading-relaxed">
+        Preparing encrypted Zoom Meeting SDK room…
+      </p>
+      <div class="mt-5 flex items-center justify-center gap-3">
+        <button type="button" id="wdos-zoom-retry-btn" class="wdos-hud-pill" style="display:none;">Try Again</button>
+        <a href="{{ leave_url }}" class="wdos-hud-pill">Back to Meeting</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if mgr and not is_guest %}
+  <!-- Host-Only Top-Right Overlay Bar (z-index above #zmmtg-root) -->
+  <div class="wdos-zoom-hud" id="wdos-host-hud">
+    <button type="button" id="wdos-toggle-guest-drawer" class="wdos-hud-pill" title="Manage waiting room guests and room security">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Guests waiting</span>
+      <span id="waiting-badge" class="wdos-badge" hidden>0</span>
+    </button>
+    <form method="post" action="{% url 'meetings:end' m.pk %}" id="wdos-end-meeting-form" class="inline">
+      {% csrf_token %}
+      <button type="submit" class="wdos-hud-pill danger" title="End this meeting for everyone">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+        <span>End for everyone</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- Waiting Guest Toast Notification (reused by _guest_panel.html) -->
+  <div id="waiting-toast" class="wdos-zoom-toast" hidden>
+    <span><strong id="waiting-toast-name">Guest</strong> is waiting in the lobby</span>
+    <button type="button" id="waiting-toast-open" class="wdos-hud-pill" style="padding:4px 10px;">Review</button>
+  </div>
+
+  <!-- Host Slide-Out Guest & Security Drawer (includes _guest_panel.html unchanged) -->
+  <aside id="meet-drawer" class="wdos-zoom-drawer collapsed" aria-label="Guest lobby and security controls">
+    <div id="drawer-pane-people">
+      <div id="seg-access">
+        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-700">
+          <span class="text-xs font-extrabold uppercase tracking-wider text-slate-300">WDOS Guest Lobby</span>
+          <button type="button" id="wdos-close-guest-drawer" class="text-xs font-bold text-slate-400 hover:text-white cursor-pointer">Close ✕</button>
+        </div>
+        {% include 'meetings/_guest_panel.html' with room=True %}
+      </div>
+    </div>
+  </aside>
+  {% endif %}
+
+  <!-- Configuration payload (no secrets/signatures in HTML) -->
+  <div id="wdos-zoom-config"
+       hidden
+       data-sig-url="{{ sig_url }}"
+       data-leave-url="{{ leave_url }}"
+       data-ws-ticket-url="{{ ws_ticket_url }}"
+       data-ws-path="{{ ws_path }}"
+       data-ws-base="{{ ws_base }}"
+       data-csrf="{{ csrf_token }}"
+       data-mgr="{{ mgr|yesno:'1,0' }}"
+       data-guest="{{ is_guest|yesno:'1,0' }}"
+       data-lang="{{ my_lang|default:'en' }}"
+       data-configured="{{ missing|yesno:'0,1' }}"></div>
+
+  {% if not missing %}
+  <!-- Zoom Meeting SDK 6.10.0 UMD Dependencies from official CDN with verified SHA-384 SRI hashes (§4.1) -->
+  <script src="{{ sdk.react_url }}" {% if sdk.react_sri %}integrity="{{ sdk.react_sri }}"{% endif %} crossorigin="anonymous"></script>
+  <script src="{{ sdk.react_dom_url }}" {% if sdk.react_dom_sri %}integrity="{{ sdk.react_dom_sri }}"{% endif %} crossorigin="anonymous"></script>
+  <script src="{{ sdk.sdk_url }}" {% if sdk.sdk_sri %}integrity="{{ sdk.sdk_sri }}"{% endif %} crossorigin="anonymous"></script>
+  <script src="{% static 'realtime/ws.js' %}"></script>
+  <script src="{% static 'meetings/zoom_room.js' %}"></script>
+  {% endif %}
+</body>
+</html>
