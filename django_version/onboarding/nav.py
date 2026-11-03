@@ -81,6 +81,19 @@ HQ_FUNCTION_LABELS = {
     'qa': 'WDOS Quality Assurance & Controls Lead',
 }
 
+CORE_SIDEBAR_URLS = {
+    '/workspace/',
+    '/workspace/dashboard/',
+    '/workspace/activities/',
+    '/workspace/meetings/',
+    '/workspace/tasks/',
+    '/workspace/tasks/?scope=hq',
+    '/workspace/structure/',
+    '/workspace/members/',
+    '/onboarding/',
+    '/workspace/ask/',
+}
+
 _HQ_SIDEBARS_CACHE = None
 
 
@@ -119,14 +132,13 @@ def build_hq_groups(hq_fn):
     data = load_hq_sidebars()
     fn_items_raw = data.get('sidebars', {}).get(hq_fn or 'founder', [])
     role_items = []
-    seen = set()
+    seen_urls = set(CORE_SIDEBAR_URLS)
     for entry in fn_items_raw:
         if isinstance(entry, list) and len(entry) >= 2:
             label, h = entry[0], entry[1]
             url = map_hash_to_url(h)
-            key = (label, url)
-            if key not in seen:
-                seen.add(key)
+            if url not in seen_urls:
+                seen_urls.add(url)
                 role_items.append({'label': label, 'url': url, 'open': True})
 
     groups = []
@@ -138,7 +150,7 @@ def build_hq_groups(hq_fn):
             'default_open': True,
         })
 
-    # Always include the 13 Central Admin groups so every HQ page is reachable
+    # Include the Central Admin groups for any remaining HQ pages not already listed above
     central_groups = [
         ('hq_cmd', '1. Command & Dashboards', [
             {'label': 'Founder Command Centre', 'url': '/workspace/central/', 'open': True},
@@ -189,12 +201,18 @@ def build_hq_groups(hq_fn):
         ]),
     ]
     for gid, title, items in central_groups:
-        groups.append({
-            'id': gid,
-            'title': title,
-            'items': items,
-            'default_open': not bool(role_items),
-        })
+        deduped_items = []
+        for item in items:
+            if item['url'] not in seen_urls:
+                seen_urls.add(item['url'])
+                deduped_items.append(item)
+        if deduped_items:
+            groups.append({
+                'id': gid,
+                'title': title,
+                'items': deduped_items,
+                'default_open': not bool(role_items),
+            })
     return groups
 
 
@@ -296,6 +314,7 @@ def build_volunteer_groups(is_leader, is_deputy, gate_is_open):
     ]
 
     groups = []
+    seen_urls = set(CORE_SIDEBAR_URLS)
     for gid, title, leader_only, items in raw_sections:
         if leader_only and not is_leader:
             continue
@@ -305,6 +324,9 @@ def build_volunteer_groups(is_leader, is_deputy, gate_is_open):
                 continue
             if item.get('deputy') and not is_deputy:
                 continue
+            if item['url'] in seen_urls:
+                continue
+            seen_urls.add(item['url'])
             item_open = bool(item.get('open')) or gate_is_open
             filtered.append({
                 'label': item['label'],
