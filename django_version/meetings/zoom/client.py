@@ -215,18 +215,22 @@ class ZoomClient:
 
             if resp.status_code >= 400:
                 err_msg = f'Zoom API error ({resp.status_code})'
+                zoom_message = ''
                 try:
                     body = resp.json()
                     if body.get('message'):
-                        err_msg = f"{err_msg}: {body['message']}"
+                        zoom_message = str(body['message'])
+                        err_msg = f"{err_msg}: {zoom_message}"
                 except Exception:
                     pass
+                # Include Zoom's own reason (e.g. "does not contain scopes: [...]"); it never contains secrets.
                 logger.error(
-                    'Zoom API 4xx method=%s path=%s status=%d tracking_id=%s',
+                    'Zoom API 4xx method=%s path=%s status=%d tracking_id=%s reason=%s',
                     method,
                     path,
                     resp.status_code,
                     tracking_id,
+                    zoom_message[:300],
                 )
                 raise ZoomError(err_msg, status_code=resp.status_code, tracking_id=tracking_id)
 

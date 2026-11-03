@@ -110,3 +110,24 @@ Add the following variables to the `wdos-secrets` environment group in Render:
 ### 5.4 Rollback to LiveKit
 - To roll back at any time, open **Django Admin → Meetings → Video platform settings** and set **Active provider** back to `LiveKit (WODDI Room)`.
 - All newly scheduled meetings will immediately use LiveKit, while any existing Zoom meetings remain functional as long as their Zoom credentials remain configured.
+
+### 5.5 Render services Zoom needs (in addition to `wdos-web`, `wdos-interpreter`, `wdos-db`)
+| Resource | Type | Required? | Why |
+|---|---|---|---|
+| `wdos-redis` | Key Value (Redis), same region | **Yes** | Channels pub/sub between the web app and the realtime service, the shared Zoom OAuth token / host-claim / ZAK cache, single-use WebSocket ticket nonces. Use the **internal** connection URL. |
+| `wdos-realtime` | Web Service (Uvicorn / ASGI) | **Yes** | Serves the WebSockets. `wdos-web` runs Gunicorn (WSGI) and cannot serve `/ws/...`. |
+| `wdos-zoom-reconcile` | Cron Job | Optional | Safety net only (retries failed Zoom syncs, purges old webhook rows). Nothing in the UI depends on it. |
+
+Environment variables:
+- `wdos-web` and `wdos-realtime`: `REDIS_URL` (Key Value internal URL), the `ZOOM_*` variables, `DATABASE_URL`.
+- `wdos-realtime` must have the **same `DJANGO_SECRET_KEY` as `wdos-web`** (the blueprint copies it with `fromService`; when creating the service by hand, paste the value from `wdos-web`). Otherwise every WebSocket is closed with code 4401.
+- `wdos-web`: `REALTIME_WS_URL=wss://<wdos-realtime host>` (no trailing slash).
+- `wdos-realtime`: `REALTIME_ALLOWED_ORIGINS=https://<wdos-web host>` (exact origin(s) of the web app, including any custom domain).
+
+Order of operations for a first staging deploy:
+1. Add the two missing Zoom scopes (`user:read:user:admin`, `user:read:token:admin`) and any others in §5.1.
+2. Create/sync `wdos-redis` and `wdos-realtime` (Blueprints → Sync, or create by hand), then set the variables above.
+3. Deploy `wdos-web` (its `preDeployCommand` runs the migrations that create the Zoom tables).
+4. In the Zoom app, set the Event Notification URL to `https://<wdos-web host>/integrations/zoom/webhook/` and click **Validate** (this only succeeds after `ZOOM_WEBHOOK_SECRET_TOKEN` is set on `wdos-web`).
+5. In Django admin: add a **Zoom host account**, then set **Video platform settings → Active provider = Zoom**.
+6. The staging services must deploy the branch that contains this work (Service → Settings → Branch), or merge it first.

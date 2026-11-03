@@ -191,6 +191,27 @@ class Phase3SignaturesAndZoomRoomViewsTest(TestCase):
         dec_mgr2 = jwt.decode(data_mgr2['signature'], ZOOM_TEST_SETTINGS['ZOOM_SDK_SECRET'], algorithms=['HS256'])
         self.assertEqual(dec_mgr2['role'], 0)
 
+    def test_zak_failure_returns_clear_error_and_does_not_lock_the_host_slot(self):
+        """Regression: a missing Zoom scope (user:read:token:admin) made get_host_zak fail. The manager used to be joined as a
+        plain attendee while still holding the 3-hour host claim, so nobody could ever start the meeting."""
+        from ..zoom.client import ZoomError
+        c_host = Client()
+        c_host.force_login(self.host_user)
+        url = reverse('meetings:zoom_signature', args=[self.meeting.pk])
+        with patch('meetings.zoom_views.get_host_zak', side_effect=ZoomError('Invalid access token, does not contain scopes', 400)):
+            resp = c_host.post(url)
+        self.assertEqual(resp.status_code, 502)
+        self.assertEqual(resp['Cache-Control'], 'no-store')
+        self.assertIn('user:read:token:admin', resp.json()['error'])
+        self.assertNotIn('signature', resp.json())
+        self.assertIsNone(get_host_claimant(self.meeting))      # slot released, not held for 3 hours
+
+        # Once the scope is fixed the same manager (or another one) can claim host and gets the ZAK.
+        with patch('meetings.zoom_views.get_host_zak', return_value='zak-ok'):
+            resp2 = c_host.post(url)
+        self.assertEqual(resp2.status_code, 200)
+        self.assertEqual(resp2.json().get('zak'), 'zak-ok')
+
     def test_coop_coep_present_on_zoom_room_and_absent_on_livekit_room(self):
         c = Client()
         c.force_login(self.member_user)

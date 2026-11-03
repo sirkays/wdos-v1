@@ -1,3 +1,4 @@
+import logging
 from functools import wraps
 from django.conf import settings
 from django.contrib import messages
@@ -19,8 +20,10 @@ from .platform import missing_zoom_settings
 from .views import LANGS, _ctx, _fmt_12h, _fmt_time_12h, _get, _guard, _my_lang, _passcode_ok
 from .zoom.client import ZoomError
 from .zoom.sdk import map_zoom_lang, sdk_assets
-from .zoom.signature import claim_host_slot, make_sdk_signature
+from .zoom.signature import claim_host_slot, make_sdk_signature, release_host_claim
 from .zoom.zak import get_host_zak
+
+logger = logging.getLogger('wdos.zoom')
 
 SIG_RATE_LIMIT = (20, 60)  # 20 signature requests per 60 seconds
 
@@ -168,10 +171,19 @@ def zoom_signature_view(request, pk):
         try:
             zak = get_host_zak(zm.host_account)
             role = 1
-        except ZoomError:
-            # Degrade gracefully to attendee role if ZAK fetch fails when JBH is enabled
-            role = 0
-            zak = None
+        except ZoomError as exc:
+            # A manager who holds the host slot but cannot get a ZAK cannot start the meeting. Do NOT silently join
+            # them as a plain attendee (nobody would be host), and do NOT keep the slot locked for 3 hours: release
+            # it so the next attempt (or another manager) can claim it once the cause is fixed.
+            release_host_claim(m, str(request.user.pk))
+            logger.error('Zoom ZAK fetch failed for meeting=%s host=%s: %s', m.pk, zm.host_account.zoom_user_id, exc)
+            resp = JsonResponse(
+                {'error': 'Zoom could not authorise the host to start this meeting. '
+                          'Ask a WDOS administrator to check the Zoom app permissions (user:read:token:admin).'},
+                status=502,
+            )
+            resp['Cache-Control'] = 'no-store'
+            return resp
 
     sig = make_sdk_signature(zm.zoom_meeting_id, role)
     user_name = (

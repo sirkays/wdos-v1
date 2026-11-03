@@ -81,7 +81,7 @@ services:
     numInstances: 2
     rootDir: django_version
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn wdos_project.asgi:application --host 0.0.0.0 --port $PORT --workers 2 --proxy-headers --ws websockets
+    startCommand: uvicorn wdos_project.asgi:application --host 0.0.0.0 --port $PORT --workers 2 --proxy-headers --forwarded-allow-ips "*" --ws websockets
     healthCheckPath: /healthz
     envVars:
       - fromGroup: wdos-secrets
@@ -89,6 +89,13 @@ services:
         value: 3.11.9
       - key: DJANGO_DEBUG
         value: "False"
+      # Must be the SAME key as wdos-web: the web app signs the short-lived WebSocket tickets, this service verifies them.
+      # (Without it every socket is closed with code 4401.)
+      - key: DJANGO_SECRET_KEY
+        fromService:
+          type: web
+          name: wdos-web
+          envVarKey: DJANGO_SECRET_KEY
       - key: DATABASE_URL
         fromDatabase:
           name: wdos-db

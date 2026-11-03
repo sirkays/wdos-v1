@@ -1,12 +1,16 @@
 import json
 import time
 from urllib.parse import parse_qs
+from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from .tickets import consume
 
 MAX_INBOUND_BYTES = 1024
 MAX_MSGS_PER_SEC = 5
+
+# consume() does a (Redis) cache write; never run that on the event loop or one slow call stalls every open socket.
+_consume_async = sync_to_async(consume, thread_sensitive=False)
 
 
 def _extract_ticket(scope) -> str:
@@ -62,7 +66,7 @@ class MeetingConsumer(_BaseWdosConsumer):
         self._msg_timestamps = []
         url_pk = str(self.scope.get('url_route', {}).get('kwargs', {}).get('pk', ''))
         token = _extract_ticket(self.scope)
-        ticket = consume(token)
+        ticket = await _consume_async(token)
 
         await self.accept()
         if not ticket or ticket.get('kind') != 'member':
@@ -90,7 +94,7 @@ class GuestLobbyConsumer(_BaseWdosConsumer):
         self._msg_timestamps = []
         url_code = str(self.scope.get('url_route', {}).get('kwargs', {}).get('code', ''))
         token = _extract_ticket(self.scope)
-        ticket = consume(token)
+        ticket = await _consume_async(token)
 
         await self.accept()
         if not ticket or ticket.get('kind') != 'guest':

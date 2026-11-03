@@ -171,53 +171,75 @@
       })
       .then(function (sigData) {
         var langCode = sigData.lang || 'en-US';
+
+        function beginInit() {
+          window.ZoomMtg.init({
+            leaveUrl: sigData.leaveUrl || leaveUrl,
+            disableCORP: !window.crossOriginIsolated,
+            patchJsMedia: true,
+            disableInvite: true,
+            meetingInfo: ['topic', 'host', 'participant', 'dc', 'enctype'],
+            success: function () {
+              // From here Zoom draws its own screens (pre-join "Use microphone and camera", waiting for host, then the
+              // meeting) into #zmmtg-root. Our status overlay is full-screen and would sit on top of them, hiding the
+              // button the person has to click, so it is hidden NOW and only comes back if Zoom reports an error.
+              if (overlay) overlay.style.display = 'none';
+
+              var joinParams = {
+                sdkKey: sigData.sdkKey,
+                signature: sigData.signature,
+                meetingNumber: sigData.meetingNumber,
+                passWord: sigData.password,
+                userName: sigData.userName,
+                userEmail: sigData.userEmail || '',
+                customerKey: sigData.customerKey
+              };
+              if (sigData.zak) {
+                joinParams.zak = sigData.zak;
+              }
+              window.ZoomMtg.join(
+                Object.assign({}, joinParams, {
+                  success: function () {
+                    if (overlay) overlay.style.display = 'none';
+                    if (typeof window.ZoomMtg.inMeetingServiceListener === 'function') {
+                      window.ZoomMtg.inMeetingServiceListener('onMeetingStatus', function (st) {
+                        if (st && st.meetingStatus === 3) {
+                          window.location.href = sigData.leaveUrl || leaveUrl;
+                        }
+                      });
+                    }
+                  },
+                  error: function (err) {
+                    showError('Could Not Join Zoom Room', friendlySdkError(err));
+                  }
+                })
+              );
+            },
+            error: function (err) {
+              showError('Could Not Initialize Zoom Room', friendlySdkError(err));
+            }
+          });
+        }
+
+        // Zoom's UI strings load asynchronously: wait for them (as Zoom's own sample does) before init. The SDK
+        // resolves this itself after at most ~3 s, the timer below is only a safety net.
+        var started = false;
+        function go() {
+          if (started) return;
+          started = true;
+          beginInit();
+        }
         try {
           if (window.ZoomMtg.i18n && typeof window.ZoomMtg.i18n.load === 'function') {
             window.ZoomMtg.i18n.load(langCode);
+            if (typeof window.ZoomMtg.i18n.onLoad === 'function') {
+              window.ZoomMtg.i18n.onLoad(go);
+              setTimeout(go, 5000);
+              return;
+            }
           }
         } catch (e) {}
-
-        window.ZoomMtg.init({
-          leaveUrl: sigData.leaveUrl || leaveUrl,
-          disableCORP: !window.crossOriginIsolated,
-          patchJsMedia: true,
-          disableInvite: true,
-          meetingInfo: ['topic', 'host', 'participant', 'dc', 'enctype'],
-          success: function () {
-            var joinParams = {
-              sdkKey: sigData.sdkKey,
-              signature: sigData.signature,
-              meetingNumber: sigData.meetingNumber,
-              passWord: sigData.password,
-              userName: sigData.userName,
-              userEmail: sigData.userEmail || '',
-              customerKey: sigData.customerKey
-            };
-            if (sigData.zak) {
-              joinParams.zak = sigData.zak;
-            }
-            window.ZoomMtg.join(
-              Object.assign({}, joinParams, {
-                success: function () {
-                  if (overlay) overlay.style.display = 'none';
-                  if (typeof window.ZoomMtg.inMeetingServiceListener === 'function') {
-                    window.ZoomMtg.inMeetingServiceListener('onMeetingStatus', function (st) {
-                      if (st && st.meetingStatus === 3) {
-                        window.location.href = sigData.leaveUrl || leaveUrl;
-                      }
-                    });
-                  }
-                },
-                error: function (err) {
-                  showError('Could Not Join Zoom Room', friendlySdkError(err));
-                }
-              })
-            );
-          },
-          error: function (err) {
-            showError('Could Not Initialize Zoom Room', friendlySdkError(err));
-          }
-        });
+        go();
       })
       .catch(function (err) {
         showError('Unable to Join Meeting', err && err.message ? err.message : 'Failed to request meeting signature.');
@@ -225,7 +247,8 @@
   }
 
   if (retryBtn) {
-    retryBtn.addEventListener('click', startZoomRoom);
+    // A clean page load is the reliable way to retry: the SDK cannot be re-initialised once it has started.
+    retryBtn.addEventListener('click', function () { window.location.reload(); });
   }
 
   if (document.readyState === 'loading') {
