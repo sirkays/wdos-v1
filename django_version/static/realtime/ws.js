@@ -20,6 +20,8 @@
     var wsBase = resolveWsBase(opts.wsBase || '');
     var onEvent = typeof opts.onEvent === 'function' ? opts.onEvent : function () {};
     var onOpen = typeof opts.onOpen === 'function' ? opts.onOpen : function () {};
+    // Optional: onStatus('open'|'retrying', attempt) lets a page tell the user when live updates are unavailable.
+    var onStatus = typeof opts.onStatus === 'function' ? opts.onStatus : function () {};
 
     var ws = null;
     var pingTimer = null;
@@ -42,6 +44,7 @@
       if (closedPermanently) return;
       clearTimers();
       attempt += 1;
+      try { onStatus('retrying', attempt); } catch (e) {}
       var baseDelay = Math.min(30000, 1000 * Math.pow(2, Math.min(attempt - 1, 5)));
       var jitter = Math.floor(Math.random() * 500);
       var delay = document.hidden ? Math.max(baseDelay, 10000) : baseDelay + jitter;
@@ -83,6 +86,7 @@
                 } catch (e) {}
               }
             }, 25000);
+            try { onStatus('open', 0); } catch (e) {}
             onOpen();
           };
 
@@ -129,6 +133,12 @@
     }
 
     global.addEventListener('pagehide', close);
+    global.addEventListener('online', function () {
+      if (!closedPermanently && (!ws || ws.readyState === WebSocket.CLOSED)) {
+        attempt = 0;
+        connect();
+      }
+    });
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden && !closedPermanently && (!ws || ws.readyState === WebSocket.CLOSED)) {
         attempt = 0;

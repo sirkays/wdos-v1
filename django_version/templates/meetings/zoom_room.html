@@ -96,15 +96,93 @@
       opacity: 0;
       pointer-events: none;
     }
+    /* Dark skin for the shared guest panel. The panel markup is light-themed (white card, slate text) and is
+       shared with LiveKit, so it is restyled here instead of being edited. */
+    .wdos-zoom-drawer .panel {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      color: #e2e8f0;
+    }
+    .wdos-zoom-drawer .panelhead {
+      border-color: rgba(148, 163, 184, 0.25) !important;
+    }
     .wdos-zoom-drawer .panelhead h2 {
       color: #f8fafc !important;
+      font-size: 15px;
+    }
+    .wdos-zoom-drawer .panelhead .bg-woddi-50 {
+      background: rgba(212, 0, 106, 0.2) !important;
+      color: #fda4c8 !important;
     }
     .wdos-zoom-drawer .rounded-xl {
       background: rgba(15, 23, 42, 0.65) !important;
-      border-color: rgba(148, 163, 184, 0.2) !important;
+      border-color: rgba(148, 163, 184, 0.28) !important;
     }
-    .wdos-zoom-drawer h3, .wdos-zoom-drawer .ws-list span {
-      color: #e2e8f0 !important;
+    .wdos-zoom-drawer h3 {
+      color: #f1f5f9 !important;
+    }
+    .wdos-zoom-drawer p,
+    .wdos-zoom-drawer .ws-empty,
+    .wdos-zoom-drawer .text-slate-400,
+    .wdos-zoom-drawer .text-slate-500,
+    .wdos-zoom-drawer .text-slate-600 {
+      color: #cbd5e1 !important;
+    }
+    .wdos-zoom-drawer .text-slate-700,
+    .wdos-zoom-drawer .text-slate-800,
+    .wdos-zoom-drawer .text-slate-900 {
+      color: #f8fafc !important;
+    }
+    .wdos-zoom-drawer #glink {
+      background: #0f172a !important;
+      color: #f8fafc !important;
+      border: 1px solid rgba(148, 163, 184, 0.45) !important;
+    }
+    .wdos-zoom-drawer .btn {
+      background: #334155;
+      border-color: #64748b;
+      color: #f8fafc;
+    }
+    .wdos-zoom-drawer .btn:hover {
+      background: #475569;
+    }
+    .wdos-zoom-drawer .btn.primary {
+      background: #d4006a;
+      border-color: #d4006a;
+      color: #ffffff;
+    }
+    .wdos-zoom-drawer .btn.primary:hover {
+      background: #b00057;
+    }
+    .wdos-zoom-drawer .ws-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .wdos-zoom-drawer .ws-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    }
+    .wdos-zoom-drawer .ws-list li:last-child {
+      border-bottom: 0;
+    }
+    .wdos-zoom-drawer .ws-list li.ws-empty {
+      display: block;
+      font-size: 13px;
+    }
+    .wdos-zoom-drawer .ws-list .btn {
+      min-height: 32px;
+      padding: 5px 12px;
+      font-size: 12px;
+    }
+    .wdos-zoom-drawer .ws-list span {
+      color: #f8fafc !important;
     }
     .wdos-zoom-toast {
       position: fixed;

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -6,12 +7,18 @@ from django.db import transaction
 logger = logging.getLogger(__name__)
 
 
+async def _bounded_group_send(layer, group, message):
+    """A publish must never hang the web request (e.g. ending a meeting) if Redis is slow or unreachable."""
+    await asyncio.wait_for(layer.group_send(group, message), timeout=3)
+
+
 def _push_now(group: str, event: dict) -> None:
     try:
         layer = get_channel_layer()
         if layer is None:
             return
-        async_to_sync(layer.group_send)(
+        async_to_sync(_bounded_group_send)(
+            layer,
             group,
             {
                 'type': 'wdos.event',

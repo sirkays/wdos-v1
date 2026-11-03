@@ -118,6 +118,8 @@ CACHES = {
         {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': REDIS_URL,
+            # Never let an unreachable Redis hang a request until gunicorn kills the worker.
+            'OPTIONS': {'socket_connect_timeout': 3, 'socket_timeout': 5},
         }
         if REDIS_URL
         else {
@@ -132,7 +134,7 @@ if REDIS_URL:
         'default': {
             'BACKEND': 'channels_redis.pubsub.RedisPubSubChannelLayer',
             'CONFIG': {
-                'hosts': [REDIS_URL],
+                'hosts': [{'address': REDIS_URL, 'socket_connect_timeout': 3}],
             },
         },
     }

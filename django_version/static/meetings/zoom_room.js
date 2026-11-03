@@ -100,6 +100,10 @@
       ticketUrl: wsTicketUrl,
       wsPath: wsPath,
       wsBase: wsBase,
+      onOpen: function () {
+        // Catch up on anything that happened while the socket was connecting/reconnecting (one read, not polling).
+        if (isManager) document.dispatchEvent(new Event('wdos:lobby'));
+      },
       onEvent: function (msg) {
         if (!msg || !msg.type) return;
 
