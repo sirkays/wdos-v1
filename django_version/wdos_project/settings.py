@@ -183,7 +183,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Authentication URLs
 LOGIN_URL = 'accounts:login'
-LOGIN_REDIRECT_URL = 'accounts:status'
+LOGIN_REDIRECT_URL = 'onboarding:dashboard'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
 # Internationalization

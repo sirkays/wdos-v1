@@ -1,4 +1,4 @@
-﻿import time
+import time
 import random
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -36,7 +36,7 @@ def _get_context(request, **kwargs):
 def welcome_view(request):
     """Screen AUTH-01: Welcome & Network Choice (WGMN vs WNNN)."""
     if request.user.is_authenticated:
-        return redirect('accounts:status')
+        return redirect('onboarding:dashboard')
 
     context = _get_context(
         request,
@@ -50,7 +50,7 @@ def welcome_view(request):
 def login_view(request):
     """Screen AUTH-02: Sign In."""
     if request.user.is_authenticated:
-        return redirect('accounts:status')
+        return redirect('onboarding:dashboard')
 
     form = LoginForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
@@ -98,7 +98,7 @@ def login_view(request):
 def register_view(request):
     """Screen AUTH-03: Self-Registration with Network preselection."""
     if request.user.is_authenticated:
-        return redirect('accounts:status')
+        return redirect('onboarding:dashboard')
 
     initial_network = request.GET.get('network', NetworkCode.WGMN)
     if initial_network not in (NetworkCode.WGMN, NetworkCode.WNNN):
@@ -216,6 +216,9 @@ def resend_view(request):
 def status_view(request):
     """Screen AUTH-05: Account Status & Membership Standing."""
     user = request.user
+    from onboarding.steps import gate_open
+    if gate_open(user):
+        return redirect('onboarding:dashboard')
     status_kind = 'approved' if user.status in (MemberStatus.ACTIVE, MemberStatus.APPROVED) else 'pending'
     status_title = f"{user.full_name} · {user.network}"
     status_text = (

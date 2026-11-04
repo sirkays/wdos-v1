@@ -152,7 +152,7 @@ def build_hq_groups(hq_fn, gate_is_open=True):
             'id': 'hq_role',
             'title': HQ_FUNCTION_LABELS.get(hq_fn or 'founder', 'HQ Role Navigation'),
             'items': role_items,
-            'default_open': True,
+            'default_open': False,
         })
 
     # Include the Central Admin groups for any remaining HQ pages not already listed above
@@ -221,7 +221,7 @@ def build_hq_groups(hq_fn, gate_is_open=True):
                 'id': gid,
                 'title': title,
                 'items': deduped_items,
-                'default_open': not bool(role_items),
+                'default_open': False,
             })
     return groups
 
@@ -349,7 +349,7 @@ def build_volunteer_groups(is_leader, is_deputy, gate_is_open):
                 'id': gid,
                 'title': title,
                 'items': filtered,
-                'default_open': gid in ('sb_1', 'sb_16', 'sb_17'),
+                'default_open': False,
             })
     return groups
 

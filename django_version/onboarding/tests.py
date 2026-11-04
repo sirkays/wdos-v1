@@ -143,6 +143,13 @@ class HqCommandAndDashboardsTests(TestCase):
         })
         self.assertTrue(Task.objects.filter(title='Submit Q4 Plan').exists())
 
+        # Sidebar groups are all closed by default, and base URL redirects onboarded users to home screen
+        home_resp = self.client.get(reverse('onboarding:dashboard'))
+        self.assertEqual(home_resp.status_code, 200)
+        self.assertNotContains(home_resp, '<details class="sb-group" open>')
+        self.assertRedirects(self.client.get('/'), reverse('onboarding:dashboard'))
+        self.assertRedirects(self.client.get(reverse('accounts:status')), reverse('onboarding:dashboard'))
+
 
 class LeaderHomeAndModulesTests(TestCase):
     def setUp(self):
