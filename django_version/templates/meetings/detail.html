@@ -5,12 +5,12 @@
 <div class="max-w-6xl mx-auto space-y-6 pb-10">
 
   <!-- Hero Header Card -->
-  <section class="relative rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-sm">
-    <div class="absolute inset-x-0 top-0 h-1.5 rounded-t-2xl bg-gradient-to-r from-[#d4006a] via-[#9d174d] to-indigo-600"></div>
+  <section class="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">
+    <div class="h-1.5 w-full bg-gradient-to-r from-[#d4006a] via-[#9d174d] to-indigo-600"></div>
 
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-      <div class="space-y-2.5 min-w-0">
-        <!-- Badges Row -->
+    <div class="p-6 sm:p-7">
+      <!-- Top Row: Status & Access Badges + Host Management Actions -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
           <span class="inline-flex items-center gap-1.5 rounded-full bg-woddi-50 border border-woddi-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-woddi-700">
             {% if m.access == 'anyone' %}Open Guest Link{% else %}{{ m.org_unit.name }}{% endif %}
@@ -33,106 +33,118 @@
             {{ m.get_status_display }}
           </span>
           {% else %}
-          <span id="meeting-status-pill" class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 border border-sky-200 px-3 py-1 text-xs font-bold text-sky-800">
-            {{ m.get_status_display }}
+          <span id="meeting-status-pill" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800">
+            <span class="h-2 w-2 rounded-full bg-emerald-500"></span> {{ m.get_status_display }}
           </span>
           {% endif %}
 
-          <span class="chip">{{ m.get_platform_display }}</span>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200/80 px-3 py-1 text-xs font-bold text-slate-700">
+            {{ m.get_platform_display }}
+          </span>
 
           {% if m.access == 'anyone' %}
-          <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">Anyone with the link</span>
+          <span class="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-700">Anyone with the link</span>
           {% else %}
-          <span class="chip grey">{{ m.get_audience_display }}</span>
+          <span class="inline-flex items-center rounded-full bg-slate-100 border border-slate-200/80 px-3 py-1 text-xs font-bold text-slate-600">{{ m.get_audience_display }}</span>
           {% endif %}
 
           {% if m.passcode %}
-          <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+          <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-800">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             Passcode Protected
           </span>
           {% endif %}
         </div>
 
-        <!-- Title -->
-        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">{{ m.title }}</h1>
-
-        <!-- Metadata Strip (Location & Host) -->
-        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-slate-600 pt-0.5">
-          {% if m.location %}
-          <span class="inline-flex items-center gap-1.5">
-            <svg class="text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/></svg>
-            <span>{{ m.location }}</span>
-          </span>
+        {% if mgr %}
+        <div class="flex items-center gap-2 shrink-0">
+          {% if m.status == 'scheduled' %}
+          <form method="post" action="{% url 'meetings:cancel' m.pk %}">
+            {% csrf_token %}
+            <button class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 h-9 text-xs font-bold text-slate-600 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-200 transition cursor-pointer" type="submit">
+              Cancel meeting
+            </button>
+          </form>
           {% endif %}
-          {% if m.organiser %}
-          <span class="inline-flex items-center gap-1.5">
-            <svg class="text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <span>Host: {{ m.organiser.full_name|default:m.organiser.email }}</span>
-          </span>
-          {% endif %}
+          <button type="button" id="open-delete-meeting-modal" class="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/60 px-3 h-9 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition cursor-pointer" title="Permanently delete this meeting">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Delete</span>
+          </button>
         </div>
+        {% endif %}
       </div>
 
-      <!-- Primary Call-to-Action Area -->
-      <div class="flex flex-wrap items-center gap-2.5 shrink-0">
-        {% if m.status != 'completed' and m.status != 'cancelled' %}
-        {% if m.platform == 'woddi' %}
-        <a href="#prejoin-studio" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 h-11 text-xs font-bold text-slate-700 hover:border-woddi-500 hover:text-woddi-700 transition shadow-2xs">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
-          <span>Test Mic &amp; Video</span>
-        </a>
-        {% endif %}
-        <form method="post" action="{% url 'meetings:join' m.pk %}" class="flex flex-wrap items-center gap-2.5">
-          {% csrf_token %}
-          {% if m.platform == 'woddi' %}
-          <div class="relative inline-flex items-center rounded-xl border border-slate-300 bg-slate-50/80 hover:bg-white hover:border-woddi-400 focus-within:border-woddi-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-woddi-500/15 transition h-11 pl-3 pr-3.5 shadow-2xs" title="Chosen before you join; it can't be changed inside the room">
-            <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-woddi-50 text-woddi-600 shrink-0 mr-2">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <!-- Main Row: Title & Metadata on Left, Participant Join Controls on Right -->
+      <div class="mt-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+        <div class="space-y-2 min-w-0 flex-1">
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">{{ m.title }}</h1>
+
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs sm:text-sm text-slate-600">
+            {% if m.location %}
+            <span class="inline-flex items-center gap-1.5 font-medium text-slate-700">
+              <svg class="text-woddi-600 shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"/></svg>
+              <span>{{ m.location }}</span>
             </span>
-            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mr-2 select-none">I hear in</span>
-            <select name="lang" data-wdos-select data-wdos-inline aria-label="Language I want to hear the meeting in" class="text-sm font-extrabold text-slate-900 focus:outline-none cursor-pointer">
-              {% for c,n in langs %}<option value="{{ c }}" {% if c == my_lang %}selected{% endif %}>{{ n }}</option>{% endfor %}
-            </select>
+            {% endif %}
+            {% if m.location and m.organiser %}
+            <span class="text-slate-300 select-none" aria-hidden="true">&bull;</span>
+            {% endif %}
+            {% if m.organiser %}
+            <span class="inline-flex items-center gap-1.5">
+              <svg class="text-slate-400 shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Host: <strong class="font-semibold text-slate-800">{{ m.organiser.full_name|default:m.organiser.email }}</strong></span>
+            </span>
+            {% endif %}
           </div>
+        </div>
+
+        {% if m.status != 'completed' and m.status != 'cancelled' %}
+        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+          {% if m.platform == 'woddi' %}
+          <a href="#prejoin-studio" class="no-underline inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 h-11 text-xs font-bold text-slate-700 hover:border-woddi-500 hover:text-woddi-700 hover:bg-woddi-50/40 transition shadow-2xs">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            <span>Test Mic &amp; Video</span>
+          </a>
           {% endif %}
-          {% if m.passcode and not passcode_unlocked %}
-          <div class="relative">
-            <input type="password" name="passcode" maxlength="32" required autocomplete="off" placeholder="Enter room passcode" aria-label="Room passcode" class="rounded-xl border border-amber-300 bg-amber-50/40 px-3.5 h-11 text-sm font-mono text-slate-900 placeholder:font-sans placeholder:text-slate-400 focus:border-woddi-600 focus:bg-white focus:outline-none w-48">
-          </div>
-          {% endif %}
-          <button class="btn primary inline-flex items-center gap-2 rounded-xl px-5 h-11 text-sm font-bold shadow-sm" type="submit">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            <span>{% if m.platform == 'woddi' %}Join WODDI Room{% elif m.platform == 'zoom' and m.zoom %}Join Zoom Meeting{% else %}Open meeting link{% endif %}</span>
-          </button>
-        </form>
-        {% endif %}
-        {% if mgr and m.status == 'scheduled' %}
-        <form method="post" action="{% url 'meetings:cancel' m.pk %}">
-          {% csrf_token %}
-          <button class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 h-11 text-xs font-bold text-slate-600 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-200 transition cursor-pointer" type="submit">Cancel meeting</button>
-        </form>
-        {% endif %}
-        {% if mgr %}
-        <button type="button" id="open-delete-meeting-modal" class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/60 px-3.5 h-11 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition cursor-pointer" title="Permanently delete this meeting">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          <span>Delete</span>
-        </button>
+          <form method="post" action="{% url 'meetings:join' m.pk %}" class="flex flex-wrap items-center gap-2.5">
+            {% csrf_token %}
+            {% if m.platform == 'woddi' %}
+            <div class="relative inline-flex items-center rounded-xl border border-slate-300 bg-slate-50/80 hover:bg-white hover:border-woddi-400 focus-within:border-woddi-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-woddi-500/15 transition h-11 pl-3 pr-3.5 shadow-2xs" title="Chosen before you join; it can't be changed inside the room">
+              <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-woddi-50 text-woddi-600 shrink-0 mr-2">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              </span>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mr-2 select-none">I hear in</span>
+              <select name="lang" data-wdos-select data-wdos-inline aria-label="Language I want to hear the meeting in" class="text-sm font-extrabold text-slate-900 bg-transparent focus:outline-none cursor-pointer">
+                {% for c,n in langs %}<option value="{{ c }}" {% if c == my_lang %}selected{% endif %}>{{ n }}</option>{% endfor %}
+              </select>
+            </div>
+            {% endif %}
+            {% if m.passcode and not passcode_unlocked %}
+            <div class="relative">
+              <input type="password" name="passcode" maxlength="32" required autocomplete="off" placeholder="Enter room passcode" aria-label="Room passcode" class="rounded-xl border border-amber-300 bg-amber-50/40 px-3.5 h-11 text-sm font-mono text-slate-900 placeholder:font-sans placeholder:text-slate-400 focus:border-woddi-600 focus:bg-white focus:outline-none w-48">
+            </div>
+            {% endif %}
+            <button class="btn primary inline-flex items-center gap-2 rounded-xl px-5 h-11 text-sm font-bold shadow-sm cursor-pointer" type="submit">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+              <span>{% if m.platform == 'woddi' %}Join WODDI Room{% elif m.platform == 'zoom' and m.zoom %}Join Zoom Meeting{% else %}Open meeting link{% endif %}</span>
+            </button>
+          </form>
+        </div>
         {% endif %}
       </div>
     </div>
 
-    <!-- Dedicated Full-Width Schedule Row (Start & End Time) -->
+    <!-- Dedicated Schedule Footer Strip -->
     {% if not m.starts_at %}
-    <div class="mt-4 pt-4 border-t border-slate-100">
-      <div class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-2.5 text-sm font-semibold text-slate-700">
-        <svg class="text-woddi-600 shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        No set time &middot; the room is open whenever the host starts the meeting.
-      </div>
+    <div class="border-t border-slate-100 bg-slate-50/70 px-6 sm:px-7 py-3.5 flex items-center gap-3 text-sm font-semibold text-slate-700">
+      <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-woddi-50 text-woddi-600">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </span>
+      <span>No set time &middot; the room is open whenever the host starts the meeting.</span>
     </div>
     {% else %}
-    <div class="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-2.5">
+    <div class="border-t border-slate-100 bg-slate-50/60 px-6 sm:px-7 py-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 shadow-2xs">
         <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-woddi-50 text-woddi-600">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </span>
@@ -142,8 +154,8 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-2.5">
-        <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-200/70 text-slate-600">
+      <div class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 shadow-2xs">
+        <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </span>
         <div class="min-w-0">
@@ -262,11 +274,11 @@
 
           {% if has_transcript and m.platform != 'zoom' %}
           <div class="flex flex-wrap items-center gap-2">
-            <a class="inline-flex items-center gap-1.5 rounded-xl border {% if draft_active %}border-woddi-300 bg-woddi-50 text-woddi-700{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-50{% endif %} px-3.5 py-2 text-xs font-bold transition shadow-2xs" href="?draft=1">
+            <a class="no-underline inline-flex items-center gap-1.5 rounded-xl border {% if draft_active %}border-woddi-300 bg-woddi-50 text-woddi-700{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-50{% endif %} px-3.5 py-2 text-xs font-bold transition shadow-2xs" href="?draft=1">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
               Draft minutes from transcript
             </a>
-            <a class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-2xs" href="{% url 'meetings:transcript' m.pk %}">
+            <a class="no-underline inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-2xs" href="{% url 'meetings:transcript' m.pk %}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Download transcript
             </a>
