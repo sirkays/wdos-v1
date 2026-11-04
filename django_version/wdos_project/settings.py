@@ -24,6 +24,11 @@ AZURE_TRANSLATOR_REGION = os.environ.get('AZURE_TRANSLATOR_REGION', '')
 # Optional second keys: meetings/translation/azure.py falls back to these on a 401/403.
 AZURE_SPEECH_KEY_2 = os.environ.get('AZURE_SPEECH_KEY_2', '')
 AZURE_TRANSLATOR_KEY_2 = os.environ.get('AZURE_TRANSLATOR_KEY_2', '')
+# Interpreter bot (meetings/translation/agent.py). AUTO_DETECT: recognise each sentence in whichever of the five languages
+# is actually spoken (the room's picker is the language a person hears in); set to 0 to always use that picker instead.
+# SILENCE_MS: quiet that ends a sentence (lower = sooner, but sentences split at short hesitations).
+INTERPRETER_AUTO_DETECT = os.environ.get('INTERPRETER_AUTO_DETECT', '1').strip().lower() not in ('0', 'false', 'no', 'off')
+INTERPRETER_SILENCE_MS = int(os.environ.get('INTERPRETER_SILENCE_MS', '500') or 500)
 
 # Meetings: Zoom Meeting SDK + Server-to-Server OAuth + Realtime WebSockets
 ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID', '')

@@ -449,7 +449,22 @@
     if (p.isLocal) return false;
     if (isBot(p)) return interpOn && ((pub && pub.trackName) || '') === 'lang:' + myLang;
     if (!interpOn) return true;
-    return !(bot === undefined ? botHere() : bot) || langOf(p) === myLang;
+    return !(bot === undefined ? botHere() : bot) || speaksLang(p) === myLang;
+  }
+
+  // The language each person was last heard SPEAKING in, as detected by the interpreter (its captions say so). It can
+  // differ from the language they chose to hear in; their real voice reaches only listeners of the language they speak,
+  // everyone else hears the interpreter. Until they have spoken, the language they hear in is the best guess.
+  var spoken = {};
+  function speaksLang(p) { return spoken[p.identity] || langOf(p); }
+  function noteSpoken(msg) {
+    if (!msg || msg.final === false || !msg.identity || !msg.lang || spoken[msg.identity] === msg.lang) return;
+    var p = room && room.remoteParticipants.get ? room.remoteParticipants.get(msg.identity) : null;
+    var before = spoken[msg.identity] || (p ? langOf(p) : msg.lang);
+    // a short exclamation ("OK", "merci") is no reason to reroute someone's voice
+    if (before !== msg.lang && (msg.text || '').split(/\s+/).filter(Boolean).length < 4) return;
+    spoken[msg.identity] = msg.lang;
+    if (before !== msg.lang) applyAudio();
   }
 
   // Reflect the switch in every control that mirrors it (more-sheet toggle, language badge). The listening language itself
@@ -764,6 +779,7 @@
     delete shown[p.identity];
     delete lastSpoke[p.identity];
     delete joinSeq[p.identity];
+    delete spoken[p.identity];
     if (tiles[p.identity]) {
       tiles[p.identity].remove();
       delete tiles[p.identity];
@@ -883,7 +899,11 @@
               return;
             }
             if (topic !== 'wdos_caption' || !p || !isBot(p)) return;   // captions come from the interpreter only
-            try { caption(JSON.parse(new TextDecoder().decode(payload))); } catch (e) {}
+            try {
+              var capMsg = JSON.parse(new TextDecoder().decode(payload));
+              noteSpoken(capMsg);
+              caption(capMsg);
+            } catch (e) {}
           })
           .on(L.RoomEvent.LocalTrackPublished, function (pub, p) {
             // also fires when the browser's own "Stop sharing" bar ends a share, so the button never gets out of sync

@@ -3,6 +3,7 @@ whitenoise>=6.8.0
 requests>=2.31.0
 livekit-api>=1.2.2,<2
 livekit>=1.1.21,<2
+aiohttp>=3.9,<4
 azure-cognitiveservices-speech>=1.40
 # --- production (Render) ---
 gunicorn>=22.0

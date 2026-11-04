@@ -312,24 +312,74 @@ class TranslationLogic(MeetingsFlow):
         pk = json.loads(logic.caption_packet('A', 'fr', 'bonjour', {'en': 'hello'}, True))
         self.assertEqual((pk['text'], pk['translations']['en'], pk['final']), ('bonjour', 'hello', True))
 
-    def test_streaming_chunks_start_before_the_speaker_pauses(self):
+    def test_sentences_are_translated_whole_and_only_run_ons_are_cut(self):
         from .translation.logic import catch_up_rate, next_chunk
         said = 'we are going to start the quarterly review of the nursery programme today'
         words = said.split()
-        # too early: not enough stable words yet (the last two are still being revised)
-        self.assertEqual(next_chunk(' '.join(words[:5]), 0), ('', 0))
-        # a few seconds in, with no punctuation: the first stable run is sent while the speaker is still talking
-        chunk, done = next_chunk(' '.join(words[:12]), 0)
-        self.assertEqual((chunk, done), (' '.join(words[:9]), 9))
-        # the same words are never sent twice; the next chunk waits for more speech
-        self.assertEqual(next_chunk(' '.join(words[:12]), done), ('', 9))
+        # an ordinary sentence is never cut while it is being spoken: it is translated whole when the speaker pauses
+        self.assertEqual(next_chunk(' '.join(words[:5]), 0, lang='en'), ('', 0))
+        self.assertEqual(next_chunk(' '.join(words[:12]), 0, lang='en'), ('', 0))
+        # a run-on sentence is cut before a linking word (a new clause), never leaving "and" dangling at the end
+        run_on = 'we are going to start the quarterly review of the nursery programme today and then we will'
+        chunk, done = next_chunk(run_on, 0, lang='en')
+        self.assertEqual((chunk, done), (' '.join(words), 13))
+        # the same words are never sent twice; the next piece waits for more speech
+        self.assertEqual(next_chunk(run_on, done, lang='en'), ('', 13))
+        # French linking words too
+        chunk, _ = next_chunk("nous allons commencer la revue trimestrielle du programme et puis nous verrons", 0, lang='fr')
+        self.assertEqual(chunk, 'nous allons commencer la revue trimestrielle du programme')
+        # no linking word at all: a hard cut after 14 stable words
+        flat = 'we are going to start the quarterly review of the nursery programme for this year'.split()
+        self.assertEqual(next_chunk(' '.join(flat), 0, lang='en'), (' '.join(flat[:14]), 14))
         # a clause boundary is preferred to a hard cut
         chunk, done = next_chunk('Good morning everyone and thank you all, for joining us today as we begin', 0)
         self.assertEqual((chunk, done), ('Good morning everyone and thank you all,', 7))
         # the speaker pauses: whatever is left is flushed, and a revised/shorter final never repeats anything
         self.assertEqual(next_chunk(' '.join(words), 9, final=True), (' '.join(words[9:]), len(words)))
         self.assertEqual(next_chunk('short', 9, final=True), ('', 9))
-        self.assertEqual((catch_up_rate(0), catch_up_rate(2), catch_up_rate(5)), (None, '+10%', '+20%'))
+        # the voice speeds up with the seconds of translation still queued, so it never falls far behind
+        self.assertEqual([catch_up_rate(s) for s in (0, 3, 6, 9)], [None, '+10%', '+20%', '+30%'])
+
+    def test_final_sentence_is_aligned_with_what_was_already_sent(self):
+        from .translation.logic import remainder_after
+        # punctuation and capitals differ between live and final text: nothing is dropped or repeated
+        self.assertEqual(remainder_after('Good morning everyone, and welcome to the meeting.',
+                                         'good morning everyone and'.split()), 'welcome to the meeting.')
+        # the final rewrote a sent word ('twenty five' -> '25'): repeat it rather than lose what follows
+        self.assertEqual(remainder_after('We will pay 25 dollars today.', 'we will pay twenty five'.split()),
+                         '25 dollars today.')
+        self.assertEqual(remainder_after('Hello everyone.', []), 'Hello everyone.')
+        self.assertEqual(remainder_after('The plan is ready.', 'the plan is ready'.split()), '')
+
+    def test_spoken_language_is_detected_from_the_recogniser_locale(self):
+        import json
+        from .translation import logic
+        from .translation.languages import lang_of_locale
+        self.assertEqual([lang_of_locale(x) for x in ('fr-FR', 'sw-KE', 'ar-EG', 'pt-BR', 'en-US', 'fr-CA')],
+                         ['fr', 'sw', 'ar', 'pt', 'en', 'fr'])
+        self.assertEqual((lang_of_locale('Unknown', 'en'), lang_of_locale(None, 'pt'), lang_of_locale('de-DE', 'fr')),
+                         ('en', 'pt', 'fr'))
+        # captions carry who spoke and in which language, so browsers route that person's real voice correctly
+        pk = json.loads(logic.caption_packet('A', 'en', 'hello', {'fr': 'bonjour'}, True, identity='abc'))
+        self.assertEqual((pk['identity'], pk['lang']), ('abc', 'en'))
+
+    def test_interpreter_voice_never_lags_without_limit(self):
+        import asyncio
+        from collections import deque
+        from .translation.agent import MAX_BEHIND_SECONDS, RoomBot, Speech
+
+        async def go():
+            bot = RoomBot('m1', 'meeting-m1')
+            bot.waiting['fr'], bot.wake['fr'] = deque(), asyncio.Event()     # no playback task: just the queue
+            ten_seconds = 'x' * 150
+            pieces = [Speech(ten_seconds) for _ in range(3)]
+            for sp in pieces:
+                bot.queue_speech('fr', sp)
+            self.assertLessEqual(bot.behind('fr'), MAX_BEHIND_SECONDS)
+            self.assertEqual(list(bot.waiting['fr']), pieces[1:])          # the oldest queued piece was skipped
+            self.assertTrue(pieces[0].dropped)
+            self.assertFalse(pieces[2].dropped)                              # the newest is always kept
+        asyncio.run(go())
 
     def test_voice_speed_is_only_added_when_asked(self):
         from .translation import azure
