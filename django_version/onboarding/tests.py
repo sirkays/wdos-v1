@@ -5,10 +5,17 @@ from django.urls import reverse
 from core.models import OrgUnit, OrgLevel, RoleAssignment, RoleCode, MemberStatus, AuditLog
 from members.models import Application, Referral, PositionMailbox
 from activation.models import CandidateActivation
+from onboarding.models import OnboardingProgress
+from onboarding.steps import STEPS
 from operations.models import (
     Task, TaskStatus, LeaderReport, ReportTemplate, Course, CourseEnrollment,
     EngagementItem, CaseFile, HelpdeskTicket, MessageTemplate, AutomationRule,
 )
+
+
+def _complete_all_onboarding_steps(user):
+    for s in STEPS:
+        OnboardingProgress.objects.get_or_create(profile=user, step_code=s['code'])
 
 
 class OnboardingFlow(TestCase):
@@ -20,6 +27,16 @@ class OnboardingFlow(TestCase):
     def test_page_and_enforcement(self):
         r = self.client.get(reverse('onboarding:start'))
         self.assertContains(r, 'Step 1 of 10')
+        # Un-onboarded users cannot access workspace pages — redirected to /onboarding/
+        for locked_url in [
+            reverse('onboarding:dashboard'),
+            reverse('onboarding:tasks'),
+            reverse('onboarding:activities'),
+            reverse('onboarding:structure'),
+            reverse('onboarding:members'),
+            reverse('onboarding:ops'),
+        ]:
+            self.assertRedirects(self.client.get(locked_url), reverse('onboarding:start'))
         r = self.client.post(reverse('onboarding:complete', args=['role']), {'seconds': 1, 'reached_end': '0'})
         self.assertEqual(r.status_code, 400)
         r = self.client.post(reverse('onboarding:complete', args=['role']), {'seconds': 60, 'reached_end': '1'})
@@ -87,6 +104,8 @@ class HqCommandAndDashboardsTests(TestCase):
             email='leader@woddi.org', password='pw12345678',
             first_name='Grace', last_name='Okafor', is_leader=True, network='WGMN', country='Nigeria', org_unit=self.ng_unit
         )
+        for u in (self.founder, self.leader):
+            _complete_all_onboarding_steps(u)
         AutomationRule.objects.create(code='inactive_14d', name='14-Day Inactivity Follow-up', is_autopilot=True, is_active=True)
         self.client.force_login(self.founder)
 
@@ -135,6 +154,7 @@ class LeaderHomeAndModulesTests(TestCase):
             first_name='Funke', last_name='Adeyemi', is_leader=True, network='WGMN',
             country='Nigeria', org_unit=self.ng_unit, status=MemberStatus.ACTIVATED
         )
+        _complete_all_onboarding_steps(self.leader)
         self.seat = RoleAssignment.objects.create(
             profile=self.leader, role=RoleCode.COUNTRY_REP, org_unit=self.ng_unit, appointment_status='appointed'
         )

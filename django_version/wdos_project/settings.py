@@ -82,6 +82,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'core.middleware.BrowserTimezoneMiddleware',
     'activation.middleware.CandidateGateMiddleware',
+    'onboarding.middleware.OnboardingGateMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

@@ -29,10 +29,8 @@ def _completed_map(user):
 
 
 def gate_open(user):
-    """The workspace gate lifts when every required step is finished (or for HQ staff)."""
+    """The workspace gate lifts only when every required onboarding step is finished."""
     if not user or not user.is_authenticated:
         return False
-    if hasattr(user, 'is_in_hq') and user.is_in_hq():
-        return True
     done = _completed_map(user)
     return all(s['code'] in done for s in STEPS if s['required'])

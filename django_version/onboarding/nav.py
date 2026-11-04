@@ -128,7 +128,7 @@ def map_hash_to_url(h):
     return '/workspace/'
 
 
-def build_hq_groups(hq_fn):
+def build_hq_groups(hq_fn, gate_is_open=True):
     data = load_hq_sidebars()
     fn_items_raw = data.get('sidebars', {}).get(hq_fn or 'founder', [])
     role_items = []
@@ -139,7 +139,12 @@ def build_hq_groups(hq_fn):
             url = map_hash_to_url(h)
             if url not in seen_urls:
                 seen_urls.add(url)
-                role_items.append({'label': label, 'url': url, 'open': True})
+                role_items.append({
+                    'label': label,
+                    'url': url,
+                    'open': gate_is_open,
+                    'locked': not gate_is_open,
+                })
 
     groups = []
     if role_items:
@@ -205,7 +210,12 @@ def build_hq_groups(hq_fn):
         for item in items:
             if item['url'] not in seen_urls:
                 seen_urls.add(item['url'])
-                deduped_items.append(item)
+                deduped_items.append({
+                    'label': item['label'],
+                    'url': item['url'],
+                    'open': gate_is_open,
+                    'locked': not gate_is_open,
+                })
         if deduped_items:
             groups.append({
                 'id': gid,
@@ -219,7 +229,7 @@ def build_hq_groups(hq_fn):
 def build_volunteer_groups(is_leader, is_deputy, gate_is_open):
     raw_sections = [
         ('sb_1', '1. Dashboard', False, [
-            {'label': 'Home', 'url': '/workspace/', 'open': True},
+            {'label': 'Home', 'url': '/workspace/'},
             {'label': 'Country Overview', 'url': '/workspace/my/country/', 'leader': True},
             {'label': 'Alerts & Attention', 'url': '/workspace/reporting/dashboard/', 'leader': True},
             {'label': 'Priority Actions', 'url': '/workspace/tasks/'},
@@ -242,7 +252,7 @@ def build_volunteer_groups(is_leader, is_deputy, gate_is_open):
             {'label': 'Appointment Pending', 'url': '/workspace/structure/?appt=pending', 'leader': True},
         ]),
         ('sb_4', '4. Tasks & Follow-Up', False, [
-            {'label': 'My Delegated Portfolio', 'url': '/workspace/?portfolio=1', 'deputy': True, 'open': True},
+            {'label': 'My Delegated Portfolio', 'url': '/workspace/?portfolio=1', 'deputy': True},
             {'label': 'Tasks Assigned to Me', 'url': '/workspace/tasks/?scope=mine'},
             {'label': 'Tasks I Assigned', 'url': '/workspace/tasks/?scope=assigned', 'leader': True},
             {'label': 'Overdue Tasks', 'url': '/workspace/tasks/?scope=overdue'},
@@ -264,10 +274,10 @@ def build_volunteer_groups(is_leader, is_deputy, gate_is_open):
             {'label': 'Engagement & Calendar', 'url': '/workspace/my/calendar/'},
             {'label': 'Programmes & Events', 'url': '/workspace/programmes/'},
             {'label': 'Field Activities', 'url': '/workspace/activities/'},
-            {'label': 'Evidence & Documents', 'url': '/workspace/my/documents/', 'open': True},
+            {'label': 'Evidence & Documents', 'url': '/workspace/my/documents/'},
         ]),
         ('sb_8', '8. WODDI Institute', False, [
-            {'label': 'My Courses & Certificates', 'url': '/workspace/my/learning/', 'open': True},
+            {'label': 'My Courses & Certificates', 'url': '/workspace/my/learning/'},
         ]),
         ('sb_9', '9. Members', False, [
             {'label': 'WGMN Members', 'url': '/workspace/members/?net=WGMN'},
@@ -277,10 +287,10 @@ def build_volunteer_groups(is_leader, is_deputy, gate_is_open):
         ('sb_10', '10. Communications', False, [
             {'label': 'Announcements', 'url': '/workspace/announcements/'},
             {'label': 'Direct Messages', 'url': '/workspace/messages/'},
-            {'label': 'HQ Inspiration Stream', 'url': '/workspace/my/messages/', 'open': True},
+            {'label': 'HQ Inspiration Stream', 'url': '/workspace/my/messages/'},
         ]),
         ('sb_11', '11. Safeguarding & Escalations', False, [
-            {'label': 'File Safeguarding Concern', 'url': '/workspace/my/safeguarding/', 'open': True},
+            {'label': 'File Safeguarding Concern', 'url': '/workspace/my/safeguarding/'},
             {'label': 'Issues & Escalations', 'url': '/workspace/reporting/issues/', 'leader': True},
             {'label': 'Confidential Cases', 'url': '/workspace/cases/', 'leader': True},
         ]),
@@ -289,27 +299,27 @@ def build_volunteer_groups(is_leader, is_deputy, gate_is_open):
             {'label': 'Personal & Unit Impact', 'url': '/workspace/my/impact/'},
         ]),
         ('sb_13', '13. Documents & Resources', False, [
-            {'label': 'Governance Documents', 'url': '/workspace/my/documents/', 'open': True},
-            {'label': 'Operational Templates', 'url': '/workspace/my/templates/', 'open': True},
-            {'label': 'Code of Conduct', 'url': '/workspace/read/?d=coc', 'open': True},
-            {'label': 'Leadership Manual', 'url': '/workspace/read/?d=manual', 'open': True},
+            {'label': 'Governance Documents', 'url': '/workspace/my/documents/'},
+            {'label': 'Operational Templates', 'url': '/workspace/my/templates/'},
+            {'label': 'Code of Conduct', 'url': '/workspace/read/?d=coc'},
+            {'label': 'Leadership Manual', 'url': '/workspace/read/?d=manual'},
         ]),
         ('sb_14', '14. Country Directory', True, [
-            {'label': 'Where I Sit & Reporting Line', 'url': '/workspace/my/network/', 'open': True},
+            {'label': 'Where I Sit & Reporting Line', 'url': '/workspace/my/network/'},
             {'label': 'Leadership Directory', 'url': '/workspace/structure/'},
         ]),
         ('sb_15', '15. Help & Support', False, [
-            {'label': 'Help & Support Centre', 'url': '/workspace/my/support/', 'open': True},
-            {'label': 'Ask WODDI Assistant', 'url': '/workspace/ask/', 'open': True},
-            {'label': 'UAT Feedback', 'url': '/workspace/feedback/', 'open': True},
+            {'label': 'Help & Support Centre', 'url': '/workspace/my/support/'},
+            {'label': 'Ask WODDI Assistant', 'url': '/workspace/ask/'},
+            {'label': 'UAT Feedback', 'url': '/workspace/feedback/'},
         ]),
         ('sb_16', '16. My Onboarding', True, [
-            {'label': '10-Step Leadership Onboarding', 'url': '/onboarding/', 'open': True},
-            {'label': 'Onboarding Status', 'url': '/workspace/my/onboarding/', 'open': True},
+            {'label': '10-Step Leadership Onboarding', 'url': '/onboarding/'},
+            {'label': 'Onboarding Status', 'url': '/workspace/my/onboarding/'},
         ]),
         ('sb_17', '17. My Profile', False, [
-            {'label': 'Personal Details', 'url': '/workspace/my/profile/', 'open': True},
-            {'label': 'Settings & Security', 'url': '/workspace/my/settings/', 'open': True},
+            {'label': 'Personal Details', 'url': '/workspace/my/profile/'},
+            {'label': 'Settings & Security', 'url': '/workspace/my/settings/'},
         ]),
     ]
 
@@ -327,7 +337,7 @@ def build_volunteer_groups(is_leader, is_deputy, gate_is_open):
             if item['url'] in seen_urls:
                 continue
             seen_urls.add(item['url'])
-            item_open = bool(item.get('open')) or gate_is_open
+            item_open = bool(gate_is_open)
             filtered.append({
                 'label': item['label'],
                 'url': item['url'],
@@ -357,10 +367,10 @@ def navigation_context(request):
     is_deputy = seat_role.startswith('deputy_') or seat_role.startswith('assistant_')
 
     hq_fn = request.session.get('wdos_hq_fn') or user.hq_function or ('founder' if is_hq else '')
-    gate_is_open = True if is_hq else gate_open(user)
+    gate_is_open = gate_open(user)
 
     if is_hq:
-        sidebar_groups = build_hq_groups(hq_fn)
+        sidebar_groups = build_hq_groups(hq_fn, gate_is_open=gate_is_open)
         role_display = HQ_FUNCTION_LABELS.get(hq_fn, 'HQ Command')
     else:
         sidebar_groups = build_volunteer_groups(is_leader, is_deputy, gate_is_open)
@@ -371,6 +381,7 @@ def navigation_context(request):
         )
 
     return {
+        'locked': not gate_is_open,
         'nav_is_hq': is_hq,
         'nav_hq_fn': hq_fn,
         'nav_hq_fn_choices': list(HQ_FUNCTION_LABELS.items()),

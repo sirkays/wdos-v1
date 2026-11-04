@@ -26,7 +26,7 @@ def start_view(request):
     done = sum(1 for r in rows if r['done_at'])
     return render(request, 'onboarding/leader.html', {
         'lang': request.session.get('wdos_lang', 'en'), 'direction': 'ltr',
-        'steps': rows, 'current': current,
+        'steps': rows, 'current': current, 'locked': bool(current),
         'n': rows.index(current) + 1 if current else len(rows),
         'total': len(rows), 'done': done, 'percent': round(done / len(rows) * 100),
     })
@@ -90,11 +90,14 @@ def _descendant_ids(unit):
 def dashboard_view(request):
     """
     Role-aware workspace home dispatcher (`app.js` `#/`):
+    - Redirects to `/onboarding/` until all 10 required steps are completed.
     - HQ Founder -> `central_view`
     - HQ HOFCO -> `hofco_view`
     - Other 7 HQ roles -> `role_home_view`
     - Field Leaders / Deputies / Volunteers -> `leader_home_view`
     """
+    if not gate_open(request.user):
+        return redirect('onboarding:start')
     u = request.user
     if u.is_in_hq():
         from onboarding.views_hq import central_view, hofco_view, role_home_view
@@ -111,6 +114,8 @@ def dashboard_view(request):
 @login_required
 def meetings_view(request):
     """Preserves the existing workspace meetings tab untouched."""
+    if not gate_open(request.user):
+        return redirect('onboarding:start')
     from core.models import OrgUnit
     from operations.models import Meeting
     u = request.user

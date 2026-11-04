@@ -1,6 +1,6 @@
 {# Shared workspace sidebar. Context: tab (active key), locked (true while onboarding is unfinished), plus nav_* from onboarding.nav.navigation_context. #}
 {% load static %}{% include '_tz.html' %}<aside class="sidebar">
-  <a href="{% url 'onboarding:dashboard' %}" class="brand-link"><img class="brand" src="{% static 'accounts/assets/woddi-logo.png' %}" alt="WODDI"></a>
+  <a href="{% if locked %}{% url 'onboarding:start' %}{% else %}{% url 'onboarding:dashboard' %}{% endif %}" class="brand-link"><img class="brand" src="{% static 'accounts/assets/woddi-logo.png' %}" alt="WODDI"></a>
 
   {% if request.user.is_authenticated %}
   <div class="role-pill">
@@ -13,7 +13,7 @@
   <form method="post" action="{% url 'onboarding:switch_hq_fn' %}" class="hq-switcher">
     {% csrf_token %}
     <label for="hq-fn-select" class="sr-only">HQ Function View</label>
-    <select id="hq-fn-select" name="hq_function" onchange="this.form.submit()" title="Switch HQ Role Sidebar & Dashboard">
+    <select id="hq-fn-select" name="hq_function" onchange="this.form.submit()" title="Switch HQ Role Sidebar & Dashboard"{% if locked %} disabled{% endif %}>
       {% for fn_code, fn_label in nav_hq_fn_choices %}
       <option value="{{ fn_code }}"{% if nav_hq_fn == fn_code %} selected{% endif %}>{{ fn_label }}</option>
       {% endfor %}
@@ -37,11 +37,11 @@
     <summary>{{ grp.title }}</summary>
     <div class="sb-sub">
       {% for item in grp.items %}
-        {% if item.locked %}
-        <a class="navitem locked-nav" href="{% url 'onboarding:start' %}" title="Finish your Leadership Pack onboarding to unlock">
+        {% if item.locked or locked %}
+        <button type="button" class="navitem locked-nav" disabled title="Unlocks when onboarding is complete">
           <span>{{ item.label }}</span>
           <svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </a>
+        </button>
         {% else %}
         <a class="navitem{% if request.path == item.url %} active{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
         {% endif %}
@@ -52,7 +52,7 @@
   {% endif %}
 
   <div class="sidebottom">
-    <a class="navitem{% if request.path == '/workspace/ask/' %} active{% endif %}" href="{% url 'onboarding:ask' %}"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Ask WODDI</a>
+    {% if locked %}<button type="button" class="navitem locked-nav" disabled title="Unlocks when onboarding is complete"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Ask WODDI<svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></button>{% else %}<a class="navitem{% if request.path == '/workspace/ask/' %} active{% endif %}" href="{% url 'onboarding:ask' %}"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Ask WODDI</a>{% endif %}
     <a class="navitem" href="{% url 'accounts:help' %}"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Help</a>
     <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button type="submit" class="navitem sign-out-btn"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</button></form>
   </div>
